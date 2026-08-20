@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SholatApp</string>
+    <string name="fajr">Subuh</string>
+    <string name="sunrise">Syuruq</string>
+    <string name="dhuhr">Dzuhur</string>
+    <string name="asr">Ashar</string>
+    <string name="maghrib">Maghrib</string>
+    <string name="isha">Isya</string>
+    <string name="next_prayer">Sholat Berikutnya</string>
+    <string name="location_updated">Lokasi diperbarui</string>
+    <string name="location_error">Gagal mendapatkan lokasi</string>
+    <string name="notification_channel_name">Waktu Sholat</string>
+    <string name="notification_channel_desc">Notifikasi waktu sholat dan pengingat azan</string>
+    <string name="prayer_time_notification">Waktunya %s!</string>
+    <string name="qibla_direction">Arah Kiblat</string>
+    <string name="settings">Pengaturan</string>
+    <string name="alarm_enabled">Alarm diaktifkan</string>
+    <string name="alarm_disabled">Alarm dinonaktifkan</string>
+    <string name="detecting_location">Mendeteksi lokasi...</string>
+    <string name="countdown_format">%02d:%02d:%02d</string>
+</resources>
