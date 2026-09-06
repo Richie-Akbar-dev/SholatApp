@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.sholatapp"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sholatapp"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "2.0.0"
+        targetSdk = 35
+        versionCode = 2
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

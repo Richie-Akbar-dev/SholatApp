@@ -26,10 +26,22 @@ import com.sholatapp.ui.theme.DarkColors
 @Composable
 fun MushafScreen() {
     var selectedSurah by remember { mutableStateOf<SurahInfo?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val mushafPrefs = remember {
+        context.getSharedPreferences("mushaf_prefs", android.content.Context.MODE_PRIVATE)
+    }
     val dailyJuz = remember { QuranMetadata.getDailyJuz() }
     val todaySurahs = remember { QuranMetadata.getSurahsInJuz(dailyJuz) }
+    val lastReadNumber = remember { mushafPrefs.getInt("last_surah_number", -1) }
+    val lastReadSurah = remember(lastReadNumber) {
+        if (lastReadNumber > 0) QuranMetadata.getAllSurahs().firstOrNull { it.number == lastReadNumber } else null
+    }
 
     if (selectedSurah != null) {
+        // Simpan posisi baca terakhir saat surah dibuka
+        LaunchedEffect(selectedSurah!!.number) {
+            mushafPrefs.edit().putInt("last_surah_number", selectedSurah!!.number).apply()
+        }
         SurahReaderScreen(
             surah = selectedSurah!!,
             onBack = { selectedSurah = null }
@@ -38,6 +50,7 @@ fun MushafScreen() {
         MushafBrowser(
             dailyJuz = dailyJuz,
             todaySurahs = todaySurahs,
+            lastReadSurah = lastReadSurah,
             onSelectSurah = { selectedSurah = it }
         )
     }
@@ -47,6 +60,7 @@ fun MushafScreen() {
 private fun MushafBrowser(
     dailyJuz: Int,
     todaySurahs: List<SurahInfo>,
+    lastReadSurah: SurahInfo?,
     onSelectSurah: (SurahInfo) -> Unit
 ) {
     val allSurahs = remember { QuranMetadata.getAllSurahs() }
@@ -75,6 +89,52 @@ private fun MushafBrowser(
                 style = MaterialTheme.typography.bodySmall,
                 color = DarkColors.TextSecondary
             )
+        }
+
+        // Banner lanjutkan bacaan terakhir
+        if (lastReadSurah != null) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkColors.SurfaceVariant)
+                    .clickable { onSelectSurah(lastReadSurah) },
+                color = DarkColors.SurfaceVariant
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Bookmark, null, tint = DarkColors.Gold, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Terakhir Dibaca",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = DarkColors.Gold,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "${lastReadSurah.number}. ${lastReadSurah.nameIndonesian} (${lastReadSurah.nameArabic})",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = DarkColors.TextSecondary
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = DarkColors.Gold
+                    ) {
+                        Text(
+                            "Lanjutkan",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
         }
 
         // Daily portion banner

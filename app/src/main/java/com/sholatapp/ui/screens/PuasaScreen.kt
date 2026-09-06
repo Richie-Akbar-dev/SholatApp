@@ -56,7 +56,9 @@ fun PuasaScreen(
         viewModel.getApplication<Application>()
             .getSharedPreferences("puasa_prefs", android.content.Context.MODE_PRIVATE)
     }
-    val isFastingToday = remember(todayStr) {
+    // refreshKey dipakai agar UI langsung diperbarui setelah toggle puasa
+    var refreshKey by remember { mutableIntStateOf(0) }
+    val isFastingToday = remember(todayStr, refreshKey) {
         puasaPrefs.getStringSet("fasted_dates", emptySet())?.contains(todayStr) == true
     }
 
@@ -65,11 +67,11 @@ fun PuasaScreen(
     var viewMonth by remember { mutableIntStateOf(cal.get(Calendar.MONTH)) }
 
     // Get fasted dates for viewing month
-    val fastedDates = remember(viewYear, viewMonth) {
+    val fastedDates = remember(viewYear, viewMonth, refreshKey) {
         val allDates = puasaPrefs.getStringSet("fasted_dates", emptySet()) ?: emptySet()
         val calMonth = Calendar.getInstance().apply { set(viewYear, viewMonth, 1) }
         val maxDay = calMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val monthDates = mutableSetOf<String>()
+        val monthDates = mutableSetOf<Int>()
         for (d in 1..maxDay) {
             val dateStr = String.format("%04d%02d%02d", viewYear, viewMonth + 1, d)
             if (dateStr in allDates) monthDates.add(d)
@@ -153,6 +155,7 @@ fun PuasaScreen(
                                 dates.add(todayStr)
                             }
                             puasaPrefs.edit().putStringSet("fasted_dates", dates).apply()
+                            refreshKey++ // trigger recompose agar UI langsung berubah
                         }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -180,7 +183,7 @@ fun PuasaScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // === MONTHLY CALENDAR ===
             Row(
@@ -252,6 +255,7 @@ fun PuasaScreen(
                             if (dayNum in 1..maxDay) {
                                 val isFasted = dayNum in fastedDates
                                 val isToday = dayNum == todayDay
+                                val isSunnah = isPuasaSunnahDay(viewYear, viewMonth, dayNum)
                                 Box(
                                     modifier = Modifier
                                         .size(36.dp)
@@ -263,6 +267,12 @@ fun PuasaScreen(
                                                 isFasted -> PuasaColors.Green.copy(alpha = 0.5f)
                                                 else -> Color.Transparent
                                             }
+                                        )
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (isSunnah && !isFasted && !isToday)
+                                                PuasaColors.Gold.copy(alpha = 0.55f) else Color.Transparent,
+                                            shape = CircleShape
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -273,7 +283,8 @@ fun PuasaScreen(
                                             isToday && isFasted -> PuasaColors.White
                                             isToday -> PuasaColors.Gold
                                             isFasted -> PuasaColors.White
-                                            col == 5 -> PuasaColors.Gold.copy(alpha = 0.7f) // Jumat
+                                            col == 4 -> PuasaColors.Gold.copy(alpha = 0.8f) // Jumat
+                                            isSunnah -> PuasaColors.GoldLight
                                             else -> PuasaColors.TextMuted
                                         },
                                         fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
@@ -307,6 +318,44 @@ fun PuasaScreen(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Hari ini", style = MaterialTheme.typography.labelSmall, color = PuasaColors.TextDim)
+                Spacer(modifier = Modifier.width(16.dp))
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, PuasaColors.Gold.copy(alpha = 0.55f), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Puasa sunnah", style = MaterialTheme.typography.labelSmall, color = PuasaColors.TextDim)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Info puasa sunnah
+            Card(
+                colors = CardDefaults.cardColors(containerColor = PuasaColors.CardBg),
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, PuasaColors.CardBorder)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        null,
+                        tint = PuasaColors.Gold,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        "Hari berlingkar emas adalah anjuran puasa sunnah: Senin & Kamis, serta hari Ayyamul Bidh (13, 14, 15 bulan Hijriah).",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PuasaColors.TextMuted
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -436,5 +485,27 @@ private fun StatItem(value: String, label: String) {
             label, style = MaterialTheme.typography.labelSmall,
             color = PuasaColors.TextMuted
         )
+    }
+}
+
+/**
+ * Cek apakah suatu tanggal adalah hari anjuran puasa sunnah:
+ * - Senin & Kamis (puasa sunnah mingguan)
+ * - Ayyamul Bidh: tanggal Hijriah 13, 14, 15 (dihitung dengan kalender Islam,
+ *   android.icu tersedia sejak API 24 — sama dengan minSdk aplikasi)
+ */
+private fun isPuasaSunnahDay(year: Int, month: Int, day: Int): Boolean {
+    val cal = Calendar.getInstance().apply { set(year, month, day) }
+    val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+    if (dayOfWeek == Calendar.MONDAY || dayOfWeek == Calendar.THURSDAY) return true
+
+    // Ayyamul Bidh — tanggal 13-15 Hijriah
+    return try {
+        val islamic = android.icu.util.IslamicCalendar()
+        islamic.time = cal.time
+        val hijriDay = islamic.get(android.icu.util.IslamicCalendar.DAY_OF_MONTH)
+        hijriDay in 13..15
+    } catch (e: Exception) {
+        false
     }
 }

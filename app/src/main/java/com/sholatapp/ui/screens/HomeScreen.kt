@@ -61,7 +61,8 @@ fun HomeScreen(
     onKalenderClick: () -> Unit,
     onNotificationClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onSalatClick: () -> Unit
+    onSalatClick: () -> Unit,
+    onLainnyaClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val mahfudzot = remember { MahfudzotData.getTodayMahfudzot() }
@@ -120,7 +121,8 @@ fun HomeScreen(
                     onKiblatClick = onKiblatClick,
                     onTasbihClick = onTasbihClick,
                     onPuasaClick = onPuasaClick,
-                    onKalenderClick = onKalenderClick
+                    onKalenderClick = onKalenderClick,
+                    onLainnyaClick = onLainnyaClick
                 )
 
                 // Prayer Tracking List
@@ -463,6 +465,7 @@ private fun PrayerTimesGrid(
                 isNext = nextPrayer?.nameKey == allTimes[0].nameKey,
                 isPassed = allTimes[0].totalSeconds <= currentSeconds,
                 isChecked = allTimes[0].nameKey in checkedPrayers,
+                imsakTime = schedule.imsak?.timeString,
                 modifier = Modifier.weight(1f)
             )
             PrayerTimeCard(
@@ -530,6 +533,7 @@ private fun PrayerTimeCard(
     isPassed: Boolean,
     isChecked: Boolean,
     isSunrise: Boolean = false,
+    imsakTime: String? = null,
     modifier: Modifier = Modifier
 ) {
     val bgColor = when {
@@ -599,6 +603,13 @@ private fun PrayerTimeCard(
                 color = timeColor,
                 fontWeight = FontWeight.Bold
             )
+            if (imsakTime != null) {
+                Text(
+                    text = "Imsak $imsakTime",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isPassed) HomeLightColors.PassedText else HomeLightColors.TextSecondary
+                )
+            }
         }
     }
 }
@@ -609,7 +620,8 @@ private fun QuickActionsSection(
     onKiblatClick: () -> Unit,
     onTasbihClick: () -> Unit,
     onPuasaClick: () -> Unit,
-    onKalenderClick: () -> Unit
+    onKalenderClick: () -> Unit,
+    onLainnyaClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -652,6 +664,60 @@ private fun QuickActionsSection(
                 onClick = onKalenderClick,
                 modifier = Modifier.weight(1f)
             )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Menu Lainnya: Mushaf, Doa, Mutabaah, Tilawah, Asmaul Husna
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onLainnyaClick),
+            colors = CardDefaults.cardColors(containerColor = HomeLightColors.Surface),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(HomeLightColors.GoldLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Apps,
+                        contentDescription = "Lainnya",
+                        tint = HomeLightColors.HeroGreen,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Lainnya",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = HomeLightColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Mushaf, Doa, Mutabaah, Tilawah, Asmaul Husna",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = HomeLightColors.TextSecondary,
+                        maxLines = 1
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = HomeLightColors.TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 

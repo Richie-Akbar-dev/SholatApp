@@ -304,6 +304,40 @@ fun SalatScreen(
                             1.dp, SalatPeriodColors.CardBorder
                         )
                     ) {
+                        // Baris Imsak (10 menit sebelum Subuh) — hanya info, tidak bisa dicentang
+                        schedule.imsak?.let { imsak ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.WbTwilight,
+                                    null,
+                                    tint = SalatPeriodColors.Gold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Text(
+                                    text = imsak.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = SalatPeriodColors.TextMuted,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = imsak.timeString,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = SalatPeriodColors.Gold,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 50.dp),
+                                color = Color(0x1A1B4D3E)
+                            )
+                        }
+
                         schedule.allTimes.forEachIndexed { index, prayer ->
                             val isPassed = prayer.totalSeconds <= currentSeconds
                             val isChecked = prayer.nameKey in uiState.checkedPrayers

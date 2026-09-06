@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.sholatapp.azan.AzanPlayer
+import com.sholatapp.ui.theme.AppThemeState
 import com.sholatapp.ui.theme.DarkColors
 import com.sholatapp.ui.theme.SholatAppTheme
 import com.sholatapp.ui.screens.*
@@ -60,7 +61,9 @@ class MainActivity : ComponentActivity() {
 
         val isFirstRun = appPrefs.getBoolean("is_first_run", true)
         val hasChosenAzan = azanPlayer.hasSelectedAzan()
-        val savedName = appPrefs.getString("user_name", "") ?: ""
+
+        // Muat preferensi tema (gelap default) sebelum UI dirender
+        AppThemeState.isDark = appPrefs.getBoolean("is_dark_theme", true)
 
         setContent {
             SholatAppTheme {
@@ -90,6 +93,8 @@ class MainActivity : ComponentActivity() {
                         var showKiblat by remember { mutableStateOf(false) }
                         var showKalender by remember { mutableStateOf(false) }
                         var showAzanPicker by remember { mutableStateOf(false) }
+                        var showMenuLainnya by remember { mutableStateOf(false) }
+                        var showPusatNotifikasi by remember { mutableStateOf(false) }
                         val uiState by viewModel.uiState.collectAsState()
                         val userName = remember {
                             appPrefs.getString("user_name", "") ?: ""
@@ -113,9 +118,10 @@ class MainActivity : ComponentActivity() {
                                         onTasbihClick = { selectedTab = AppTab.TASBIH },
                                         onPuasaClick = { selectedTab = AppTab.PUASA },
                                         onKalenderClick = { showKalender = true },
-                                        onNotificationClick = { /* TODO: Notifikasi */ },
+                                        onNotificationClick = { showPusatNotifikasi = true },
                                         onSettingsClick = { selectedTab = AppTab.PROFIL },
-                                        onSalatClick = { selectedTab = AppTab.SALAT }
+                                        onSalatClick = { selectedTab = AppTab.SALAT },
+                                        onLainnyaClick = { showMenuLainnya = true }
                                     )
                                     AppTab.SALAT -> SalatScreen(
                                         viewModel = viewModel
@@ -151,6 +157,19 @@ class MainActivity : ComponentActivity() {
                                 // Kalender overlay
                                 if (showKalender) {
                                     KalenderScreen(onBack = { showKalender = false })
+                                }
+
+                                // Menu Lainnya overlay (Mushaf, Doa, Mutabaah, Tilawah, Asmaul Husna)
+                                if (showMenuLainnya) {
+                                    MenuLainnyaScreen(onBack = { showMenuLainnya = false })
+                                }
+
+                                // Pusat Notifikasi overlay
+                                if (showPusatNotifikasi) {
+                                    PusatNotifikasiScreen(
+                                        uiState = uiState,
+                                        onBack = { showPusatNotifikasi = false }
+                                    )
                                 }
 
                                 // Azan picker overlay (from Settings)
@@ -200,7 +219,7 @@ class MainActivity : ComponentActivity() {
 private fun BottomNavBar(selectedTab: AppTab, onTabSelected: (AppTab) -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFFFFFFFF),
+        color = DarkColors.Surface,
         shadowElevation = 8.dp
     ) {
         Row(
@@ -213,11 +232,11 @@ private fun BottomNavBar(selectedTab: AppTab, onTabSelected: (AppTab) -> Unit) {
             AppTab.entries.forEach { tab ->
                 val isSelected = tab == selectedTab
                 val tint by animateColorAsState(
-                    targetValue = if (isSelected) Color(0xFF1B4D3E) else Color(0xFF9CA3AF),
+                    targetValue = if (isSelected) DarkColors.Primary else DarkColors.TextTertiary,
                     label = "tabTint"
                 )
                 val bgColor by animateColorAsState(
-                    targetValue = if (isSelected) Color(0xFFE8F5E9) else Color.Transparent,
+                    targetValue = if (isSelected) DarkColors.PrimaryContainer else Color.Transparent,
                     label = "tabBg"
                 )
                 Column(

@@ -47,6 +47,22 @@ data class PrayerSchedule(
     val isha: PrayerInfo
 ) {
     /**
+     * Waktu imsak (standar KEMENAG RI: 10 menit sebelum Subuh).
+     * Bisa null jika belum dihitung (data lama).
+     */
+    val imsak: PrayerInfo?
+        get() {
+            val imsakSeconds = fajr.totalSeconds - 10 * 60
+            if (imsakSeconds < 0) return null
+            return PrayerInfo(
+                name = "Imsak",
+                nameKey = "imsak",
+                hour = imsakSeconds / 3600,
+                minute = (imsakSeconds % 3600) / 60
+            )
+        }
+
+    /**
      * Returns all prayer times (excluding sunrise) as a list.
      */
     val prayerList: List<PrayerInfo>
