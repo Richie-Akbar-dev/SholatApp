@@ -1,7 +1,6 @@
 package com.sholatapp.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -11,43 +10,18 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Tema aplikasi — sekarang mendukung Mode Gelap & Mode Terang.
- * Skema dibangun ulang setiap kali AppThemeState.isDark berubah,
- * sehingga seluruh layar otomatis ikut berpindah tema.
+ * Tema aplikasi — sejak v2.2 memakai TEMA TERANG KONSISTEN (Mode Gelap dihapus).
+ *
+ * Semua layar kini memakai satu skema Material 3 warna terang yang dibangun
+ * dari palet `DarkColors` (objek palet terang). Header/halaman khusus seperti
+ * SalatScreen tetap memakai latar imersif sendiri sebagai gaya desain,
+ * bukan sebagai mode gelap.
  */
 @Composable
 fun SholatAppTheme(
     content: @Composable () -> Unit
 ) {
-    // Membaca state agar recompose saat toggle tema berubah
-    val isDark = AppThemeState.isDark
-
-    val colorScheme = if (isDark) darkColorScheme(
-        primary = DarkColors.Primary,
-        onPrimary = DarkColors.TextOnPrimary,
-        primaryContainer = DarkColors.PrimaryContainer,
-        onPrimaryContainer = DarkColors.PrimaryLight,
-        secondary = DarkColors.Gold,
-        onSecondary = Color.Black,
-        secondaryContainer = Color(0xFF3D2E0A),
-        onSecondaryContainer = DarkColors.GoldLight,
-        tertiary = DarkColors.PrimaryLight,
-        onTertiary = Color.Black,
-        tertiaryContainer = DarkColors.PrimaryDark,
-        onTertiaryContainer = DarkColors.TextPrimary,
-        background = DarkColors.Background,
-        onBackground = DarkColors.TextPrimary,
-        surface = DarkColors.Surface,
-        onSurface = DarkColors.TextPrimary,
-        surfaceVariant = DarkColors.SurfaceVariant,
-        onSurfaceVariant = DarkColors.TextSecondary,
-        outline = DarkColors.Border,
-        outlineVariant = DarkColors.Divider,
-        error = Color(0xFFCF6679),
-        onError = Color.Black,
-        errorContainer = Color(0xFFB00020),
-        onErrorContainer = Color(0xFFFFDAD6),
-    ) else lightColorScheme(
+    val colorScheme = lightColorScheme(
         primary = DarkColors.Primary,
         onPrimary = DarkColors.TextOnPrimary,
         primaryContainer = DarkColors.PrimaryContainer,
@@ -80,8 +54,8 @@ fun SholatAppTheme(
             val window = (view.context as Activity).window
             window.statusBarColor = DarkColors.Background.toArgb()
             window.navigationBarColor = DarkColors.Background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !isDark
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
         }
     }
 

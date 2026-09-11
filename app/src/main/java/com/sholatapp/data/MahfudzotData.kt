@@ -976,6 +976,7 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "الإخلاص نور القلب",
             meaning = "Ikhlas adalah cahaya hati."
+        ),
         Mahfudzot(
             arabic = "من أخلص لله كفاه الله مؤونة الناس",
             meaning = "Barangsiapa ikhlas karena Allah, Allah akan mencukupkan urusannya dari manusia."
@@ -989,6 +990,7 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "قل خيراً أو اصمت",
             meaning = "Ucapkan kebaikan atau diamlah."
+        ),
         Mahfudzot(
             arabic = "لا يؤمن العبد حتى يستحلّ ما حَرّم القرآن",
             meaning = "Seorang hamba tidak beriman hingga ia menghalalkan apa yang diharamkan Al-Quran."
@@ -1056,6 +1058,7 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "الجود بالمال قليل",
             meaning = "Kedermawanan dengan harta adalah sesuatu yang sedikit dibandingkan kedermawanan jiwa."
+        ),
         Mahfudzot(
             arabic = "داووا مرضاكم بالصدقة",
             meaning = "Obatilah orang sakit di antara kalian dengan sedekah."
@@ -1069,6 +1072,7 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "لا تحزن إن الله معنا",
             meaning = "Jangan bersedih, sesungguhnya Allah bersama kita."
+        ),
         Mahfudzot(
             arabic = "ولا تهنوا ولا تحزنوا وأنتم الأعلون إن كنتم مؤمنين",
             meaning = "Janganlah kamu merasa lemah dan janganlah kamu bersedih, padahal kamulah orang-orang yang paling tinggi jika kamu beriman."
@@ -1436,6 +1440,7 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "من أحبّ لأخيه ما يحب لنفسه فقد استكمل الإيمان",
             meaning = "Barangsiapa mencintai saudaranya sebagaimana mencintai dirinya sendiri, ia telah menyempurnakan iman."
+        ),
         Mahfudzot(
             arabic = "لا تبغضوا ولا تحاسدوا وتكونوا عباد الله إخواناً",
             meaning = "Jangan saling membenci dan hasud, dan jadilah kalian hamba-hamba Allah yang bersaudara."
@@ -1457,6 +1462,7 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "مثل الذي يذكر ربّه والذي لا يذكر ربّه مثل الحيّ والميت",
             meaning = "Perumpamaan orang yang mengingat Tuhannya dengan yang tidak mengingat-Nya, bagaikan orang hidup dan orang mati."
+        ),
         Mahfudzot(
             arabic = "التطوّع خير من النوم",
             meaning = "Amal sunnah lebih baik dari tidur."
@@ -1503,6 +1509,7 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "الراحمون يرحمهم الرحمن",
             meaning = "Orang-orang yang penyayang akan disayangi oleh Ar-Rahman."
+        ),
         Mahfudzot(
             arabic = "خيركم من يُرجى خيره ويُؤمن شرّه",
             meaning = "Sebaik-baik kalian adalah yang diharapkan kebaikannya dan diamankan keburukannya."
@@ -1543,6 +1550,8 @@ object MahfudzotData {
         ),
         Mahfudzot(
             arabic = "من حفر حفرة لأخيه وقع فيها",
+            meaning = "Barangsiapa menggali lubang untuk saudaranya, ia akan jatuh ke dalamnya."
+        ),
         Mahfudzot(
             arabic = "القرد في عين أمّه غزال",
             meaning = "Kera di mata ibunya adalah rusa (setiap orang menganggap anaknya yang terbaik)."
@@ -1570,9 +1579,11 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "الناس أعداء ما جهلوا",
             meaning = "Manusia itu musuh terhadap apa yang tidak mereka ketahui."
+        ),
         Mahfudzot(
             arabic = "رب أخ لك لم تلده أمّك",
             meaning = "Betapa banyak saudara yang bukan lahir dari ibumu yang sama."
+        ),
         Mahfudzot(
             arabic = "الآخرة خير وأبقى",
             meaning = "Akhirat itu lebih baik dan lebih kekal."
@@ -1940,6 +1951,7 @@ object MahfudzotData {
         Mahfudzot(
             arabic = "لا يصلح العطار ما أفسد الدهر",
             meaning = "Tidak dapat diperbaiki oleh tabib apa yang telah dirusak oleh waktu."
+        ),
         Mahfudzot(
             arabic = "إنّ في الجسد مُضغة إذا صلحت صلح الجسد كله وإذا فسدت فسد الجسد كله",
             meaning = "Sesungguhnya di dalam jasad ada segumpal daging, jika baik maka baiklah seluruh jasad, dan jika rusak maka rusaklah seluruh jasad."

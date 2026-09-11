@@ -82,26 +82,26 @@ fun DoaScreen() {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Cari doa...", color = DarkColors.TextTertiary) },
+                placeholder = { Text("Cari doa...", color = DarkColors.HeaderPlaceholder) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp)),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = DarkColors.Gold,
-                    unfocusedBorderColor = DarkColors.Border,
+                    unfocusedBorderColor = DarkColors.HeaderPlaceholder,
                     cursorColor = DarkColors.Gold,
-                    focusedTextColor = DarkColors.TextPrimary,
-                    unfocusedTextColor = DarkColors.TextPrimary
+                    focusedTextColor = DarkColors.PrimaryContainer,
+                    unfocusedTextColor = DarkColors.PrimaryContainer
                 ),
                 leadingIcon = {
-                    Icon(Icons.Default.Search, null, tint = DarkColors.TextTertiary)
+                    Icon(Icons.Default.Search, null, tint = DarkColors.HeaderPlaceholder)
                 },
                 trailingIcon = {
                     if (searchQuery.isNotBlank()) {
                         Icon(
                             Icons.Default.Close,
                             null,
-                            tint = DarkColors.TextTertiary,
+                            tint = DarkColors.HeaderPlaceholder,
                             modifier = Modifier.clickable { searchQuery = "" }
                         )
                     }

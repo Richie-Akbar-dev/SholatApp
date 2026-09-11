@@ -5,10 +5,20 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.sholatapp.azan.AzanPlayer
-import com.sholatapp.ui.theme.AppThemeState
 import com.sholatapp.ui.theme.DarkColors
 import com.sholatapp.ui.theme.SholatAppTheme
 import com.sholatapp.ui.screens.*
@@ -35,9 +44,24 @@ import com.sholatapp.viewmodel.PrayerViewModel
 enum class AppTab(val label: String, val icon: ImageVector) {
     BERANDA("Beranda", Icons.Default.Home),
     SALAT("Salat", Icons.Default.AccessTime),
-    TASBIH("Tasbih", Icons.Default.TouchApp),
+    TASBIH("Zikir", Icons.Default.TouchApp),
     PUASA("Puasa", Icons.Default.Brightness3),
-    PROFIL("Profil", Icons.Default.Person)
+    PROFIL("Pengaturan", Icons.Default.Settings)
+}
+
+/**
+ * Halaman overlay yang dibuka DI ATAS tab aktif.
+ *
+ * Sejak v2.2, 6 boolean overlay terpisah diganti satu state ini supaya
+ * navigasi lebih aman & mudah dikembangkan. Tombol back sistem akan
+ * menutup overlay (BackHandler) alih-alih keluar dari aplikasi.
+ */
+sealed class AppScreen {
+    data object Kiblat : AppScreen()
+    data object Kalender : AppScreen()
+    data object MenuLainnya : AppScreen()
+    data object PusatNotifikasi : AppScreen()
+    data object AzanPicker : AppScreen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -61,9 +85,6 @@ class MainActivity : ComponentActivity() {
 
         val isFirstRun = appPrefs.getBoolean("is_first_run", true)
         val hasChosenAzan = azanPlayer.hasSelectedAzan()
-
-        // Muat preferensi tema (gelap default) sebelum UI dirender
-        AppThemeState.isDark = appPrefs.getBoolean("is_dark_theme", true)
 
         setContent {
             SholatAppTheme {
@@ -90,14 +111,15 @@ class MainActivity : ComponentActivity() {
                     // Step 3: Main app
                     else -> {
                         var selectedTab by remember { mutableStateOf(AppTab.BERANDA) }
-                        var showKiblat by remember { mutableStateOf(false) }
-                        var showKalender by remember { mutableStateOf(false) }
-                        var showAzanPicker by remember { mutableStateOf(false) }
-                        var showMenuLainnya by remember { mutableStateOf(false) }
-                        var showPusatNotifikasi by remember { mutableStateOf(false) }
+                        var overlayScreen by remember { mutableStateOf<AppScreen?>(null) }
                         val uiState by viewModel.uiState.collectAsState()
                         val userName = remember {
                             appPrefs.getString("user_name", "") ?: ""
+                        }
+
+                        // Tombol back sistem: tutup overlay dulu, jangan keluar aplikasi
+                        BackHandler(enabled = overlayScreen != null) {
+                            overlayScreen = null
                         }
 
                         Scaffold(
@@ -110,74 +132,88 @@ class MainActivity : ComponentActivity() {
                             }
                         ) { paddingValues ->
                             Box(modifier = Modifier.padding(paddingValues)) {
-                                when (selectedTab) {
-                                    AppTab.BERANDA -> HomeScreen(
-                                        viewModel = viewModel,
-                                        userName = userName,
-                                        onKiblatClick = { showKiblat = true },
-                                        onTasbihClick = { selectedTab = AppTab.TASBIH },
-                                        onPuasaClick = { selectedTab = AppTab.PUASA },
-                                        onKalenderClick = { showKalender = true },
-                                        onNotificationClick = { showPusatNotifikasi = true },
-                                        onSettingsClick = { selectedTab = AppTab.PROFIL },
-                                        onSalatClick = { selectedTab = AppTab.SALAT },
-                                        onLainnyaClick = { showMenuLainnya = true }
-                                    )
-                                    AppTab.SALAT -> SalatScreen(
-                                        viewModel = viewModel
-                                    )
-                                    AppTab.TASBIH -> DzikirScreen()
-                                    AppTab.PUASA -> PuasaScreen(viewModel = viewModel)
-                                    AppTab.PROFIL -> SettingsScreen(
-                                        uiState = uiState,
-                                        onToggleAlarm = { viewModel.toggleAlarm(it) },
-                                        onTogglePrepAlarm = { viewModel.togglePrepAlarm(it) },
-                                        onToggleDnd = { viewModel.toggleDnd(it) },
-                                        context = this@MainActivity,
-                                        onResetDzikir = {
-                                            val dp = getSharedPreferences("dzikir_prefs", MODE_PRIVATE)
-                                            dp.edit().clear().apply()
-                                            android.widget.Toast.makeText(this, "Progress dzikir direset", android.widget.Toast.LENGTH_SHORT).show()
-                                        },
-                                        onChangeAzan = { showAzanPicker = true }
-                                    )
+                                // Konten tab — transisi fade + slide halus antar tab
+                                AnimatedContent(
+                                    targetState = selectedTab,
+                                    transitionSpec = {
+                                        (fadeIn(animationSpec = tween(220)) +
+                                                slideInVertically(animationSpec = tween(220)) { it / 24 }) togetherWith
+                                                (fadeOut(animationSpec = tween(150)) +
+                                                slideOutVertically(animationSpec = tween(150)) { -it / 32 })
+                                    },
+                                    label = "tabContent"
+                                ) { tab ->
+                                    when (tab) {
+                                        AppTab.BERANDA -> HomeScreen(
+                                            viewModel = viewModel,
+                                            userName = userName,
+                                            onKiblatClick = { overlayScreen = AppScreen.Kiblat },
+                                            onTasbihClick = { selectedTab = AppTab.TASBIH },
+                                            onPuasaClick = { selectedTab = AppTab.PUASA },
+                                            onKalenderClick = { overlayScreen = AppScreen.Kalender },
+                                            onNotificationClick = { overlayScreen = AppScreen.PusatNotifikasi },
+                                            onSettingsClick = { selectedTab = AppTab.PROFIL },
+                                            onSalatClick = { selectedTab = AppTab.SALAT },
+                                            onLainnyaClick = { overlayScreen = AppScreen.MenuLainnya }
+                                        )
+                                        AppTab.SALAT -> SalatScreen(
+                                            viewModel = viewModel
+                                        )
+                                        AppTab.TASBIH -> DzikirScreen()
+                                        AppTab.PUASA -> PuasaScreen(viewModel = viewModel)
+                                        AppTab.PROFIL -> SettingsScreen(
+                                            uiState = uiState,
+                                            onToggleAlarm = { viewModel.toggleAlarm(it) },
+                                            onTogglePrepAlarm = { viewModel.togglePrepAlarm(it) },
+                                            onToggleDnd = { viewModel.toggleDnd(it) },
+                                            context = this@MainActivity,
+                                            onResetDzikir = {
+                                                val dp = getSharedPreferences("dzikir_prefs", MODE_PRIVATE)
+                                                dp.edit().clear().apply()
+                                                android.widget.Toast.makeText(this@MainActivity, "Progress dzikir direset", android.widget.Toast.LENGTH_SHORT).show()
+                                            },
+                                            onChangeAzan = { overlayScreen = AppScreen.AzanPicker }
+                                        )
+                                    }
                                 }
 
-                                // Kiblat overlay
-                                if (showKiblat) {
-                                    KiblatScreen(
-                                        context = this@MainActivity,
-                                        latitude = uiState.latitude,
-                                        longitude = uiState.longitude,
-                                        locationName = uiState.locationAddress,
-                                        onBack = { showKiblat = false }
-                                    )
-                                }
-
-                                // Kalender overlay
-                                if (showKalender) {
-                                    KalenderScreen(onBack = { showKalender = false })
-                                }
-
-                                // Menu Lainnya overlay (Mushaf, Doa, Mutabaah, Tilawah, Asmaul Husna)
-                                if (showMenuLainnya) {
-                                    MenuLainnyaScreen(onBack = { showMenuLainnya = false })
-                                }
-
-                                // Pusat Notifikasi overlay
-                                if (showPusatNotifikasi) {
-                                    PusatNotifikasiScreen(
-                                        uiState = uiState,
-                                        onBack = { showPusatNotifikasi = false }
-                                    )
-                                }
-
-                                // Azan picker overlay (from Settings)
-                                if (showAzanPicker) {
-                                    AzanPickerScreen(
-                                        azanPlayer = azanPlayer,
-                                        onComplete = { showAzanPicker = false }
-                                    )
+                                // Overlay — slide masuk dari kanan, slide keluar saat kembali
+                                AnimatedContent(
+                                    targetState = overlayScreen,
+                                    transitionSpec = {
+                                        (slideInHorizontally(animationSpec = tween(280)) { it } +
+                                                fadeIn(animationSpec = tween(220))) togetherWith
+                                                (slideOutHorizontally(animationSpec = tween(240)) { it } +
+                                                fadeOut(animationSpec = tween(180)))
+                                    },
+                                    label = "overlayContent"
+                                ) { screen ->
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        when (screen) {
+                                            is AppScreen.Kiblat -> KiblatScreen(
+                                                context = this@MainActivity,
+                                                latitude = uiState.latitude,
+                                                longitude = uiState.longitude,
+                                                locationName = uiState.locationAddress,
+                                                onBack = { overlayScreen = null }
+                                            )
+                                            is AppScreen.Kalender -> KalenderScreen(
+                                                onBack = { overlayScreen = null }
+                                            )
+                                            is AppScreen.MenuLainnya -> MenuLainnyaScreen(
+                                                onBack = { overlayScreen = null }
+                                            )
+                                            is AppScreen.PusatNotifikasi -> PusatNotifikasiScreen(
+                                                uiState = uiState,
+                                                onBack = { overlayScreen = null }
+                                            )
+                                            is AppScreen.AzanPicker -> AzanPickerScreen(
+                                                azanPlayer = azanPlayer,
+                                                onComplete = { overlayScreen = null }
+                                            )
+                                            null -> { /* tidak ada overlay */ }
+                                        }
+                                    }
                                 }
                             }
                         }

@@ -17,11 +17,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import android.content.Context
-import androidx.compose.ui.platform.LocalContext
 import com.sholatapp.azan.AzanPlayer
 import com.sholatapp.dnd.DndHelper
 import com.sholatapp.data.TilawahData
-import com.sholatapp.ui.theme.AppThemeState
 import com.sholatapp.ui.theme.DarkColors
 import com.sholatapp.viewmodel.UiState
 import kotlin.math.ceil
@@ -58,7 +56,7 @@ fun SettingsScreen(
             Text(
                 text = "Konfigurasi aplikasi SholatApp",
                 style = MaterialTheme.typography.bodyMedium,
-                color = DarkColors.TextSecondary
+                color = DarkColors.HeaderSubtitle
             )
         }
 
@@ -69,20 +67,6 @@ fun SettingsScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Tampilan Section (Mode Gelap/Terang)
-            SectionHeader(title = "Tampilan")
-            val themePrefs = LocalContext.current
-                .getSharedPreferences("sholatapp_prefs", Context.MODE_PRIVATE)
-            SettingToggleRow(
-                title = "Mode Gelap",
-                subtitle = "Tema gelap hijau islami. Matikan untuk tema terang yang segar",
-                checked = AppThemeState.isDark,
-                onCheckedChange = { enabled ->
-                    AppThemeState.isDark = enabled
-                    themePrefs.edit().putBoolean("is_dark_theme", enabled).apply()
-                }
-            )
-
             // Notifikasi Section
             SectionHeader(title = "Notifikasi")
             SettingToggleRow(
@@ -166,7 +150,7 @@ fun SettingsScreen(
 
             // About Section
             SectionHeader(title = "Tentang")
-            SettingInfoRow(title = "Versi", value = "2.1.0")
+            SettingInfoRow(title = "Versi", value = "2.2.0")
             SettingInfoRow(title = "Perhitungan", value = "Berdasarkan posisi matahari astronomis")
             SettingInfoRow(title = "Fitur", value = "Sholat, Ibadah, Tilawah, Doa, Mushaf, Asmaul Husna, DND Fokus")
 

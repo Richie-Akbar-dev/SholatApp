@@ -1,5 +1,13 @@
 package com.sholatapp.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,22 +45,38 @@ fun MushafScreen() {
         if (lastReadNumber > 0) QuranMetadata.getAllSurahs().firstOrNull { it.number == lastReadNumber } else null
     }
 
-    if (selectedSurah != null) {
-        // Simpan posisi baca terakhir saat surah dibuka
-        LaunchedEffect(selectedSurah!!.number) {
-            mushafPrefs.edit().putInt("last_surah_number", selectedSurah!!.number).apply()
+    // Tombol back sistem: kembali ke daftar surah dulu
+    BackHandler(enabled = selectedSurah != null) {
+        selectedSurah = null
+    }
+
+    AnimatedContent(
+        targetState = selectedSurah,
+        transitionSpec = {
+            (slideInHorizontally(animationSpec = tween(260)) { it } +
+                    fadeIn(animationSpec = tween(200))) togetherWith
+                    (slideOutHorizontally(animationSpec = tween(220)) { it } +
+                    fadeOut(animationSpec = tween(160)))
+        },
+        label = "mushafContent"
+    ) { surah ->
+        if (surah != null) {
+            // Simpan posisi baca terakhir saat surah dibuka
+            LaunchedEffect(surah.number) {
+                mushafPrefs.edit().putInt("last_surah_number", surah.number).apply()
+            }
+            SurahReaderScreen(
+                surah = surah,
+                onBack = { selectedSurah = null }
+            )
+        } else {
+            MushafBrowser(
+                dailyJuz = dailyJuz,
+                todaySurahs = todaySurahs,
+                lastReadSurah = lastReadSurah,
+                onSelectSurah = { selectedSurah = it }
+            )
         }
-        SurahReaderScreen(
-            surah = selectedSurah!!,
-            onBack = { selectedSurah = null }
-        )
-    } else {
-        MushafBrowser(
-            dailyJuz = dailyJuz,
-            todaySurahs = todaySurahs,
-            lastReadSurah = lastReadSurah,
-            onSelectSurah = { selectedSurah = it }
-        )
     }
 }
 
@@ -87,7 +111,7 @@ private fun MushafBrowser(
             Text(
                 text = "Baca Al-Qur'an langsung di aplikasi",
                 style = MaterialTheme.typography.bodySmall,
-                color = DarkColors.TextSecondary
+                color = DarkColors.HeaderSubtitle
             )
         }
 
@@ -279,7 +303,7 @@ private fun SurahReaderScreen(surah: SurahInfo, onBack: () -> Unit) {
                 Text(
                     "${surah.nameIndonesian} - ${surah.ayahCount} Ayat - ${surah.revelationType}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = DarkColors.TextSecondary
+                    color = DarkColors.HeaderSubtitle
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))

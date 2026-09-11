@@ -59,7 +59,7 @@ fun StatsScreen() {
             Text(
                 text = today,
                 style = MaterialTheme.typography.bodySmall,
-                color = DarkColors.TextSecondary
+                color = DarkColors.HeaderSubtitle
             )
         }
 

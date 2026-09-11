@@ -372,4 +372,3 @@ private fun MiniStatCard(
         }
     }
 }
-}

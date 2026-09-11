@@ -1,5 +1,13 @@
 package com.sholatapp.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,16 +36,32 @@ import com.sholatapp.ui.theme.DarkColors
 fun MenuLainnyaScreen(onBack: () -> Unit) {
     var selectedMenu by remember { mutableStateOf<String?>(null) }
 
-    when (selectedMenu) {
-        "mushaf" -> MushafScreenWithBack(onBack = { selectedMenu = null })
-        "doa" -> DoaScreenWithBack(onBack = { selectedMenu = null })
-        "mutabaah" -> IbadahScreenWithBack(onBack = { selectedMenu = null })
-        "tilawah" -> TilawahScreenWithBack(onBack = { selectedMenu = null })
-        "asmaulhusna" -> AsmaulHusnaScreen(onBack = { selectedMenu = null })
-        else -> MenuLainnyaHome(
-            onSelect = { selectedMenu = it },
-            onBack = onBack
-        )
+    // Tombol back sistem: kembali ke menu utama dulu, baru tutup overlay
+    BackHandler(enabled = selectedMenu != null) {
+        selectedMenu = null
+    }
+
+    AnimatedContent(
+        targetState = selectedMenu,
+        transitionSpec = {
+            (slideInHorizontally(animationSpec = tween(260)) { it } +
+                    fadeIn(animationSpec = tween(200))) togetherWith
+                    (slideOutHorizontally(animationSpec = tween(220)) { it } +
+                    fadeOut(animationSpec = tween(160)))
+        },
+        label = "menuLainnyaContent"
+    ) { menu ->
+        when (menu) {
+            "mushaf" -> MushafScreenWithBack(onBack = { selectedMenu = null })
+            "doa" -> DoaScreenWithBack(onBack = { selectedMenu = null })
+            "mutabaah" -> IbadahScreenWithBack(onBack = { selectedMenu = null })
+            "tilawah" -> TilawahScreenWithBack(onBack = { selectedMenu = null })
+            "asmaulhusna" -> AsmaulHusnaScreen(onBack = { selectedMenu = null })
+            else -> MenuLainnyaHome(
+                onSelect = { selectedMenu = it },
+                onBack = onBack
+            )
+        }
     }
 }
 
@@ -125,7 +149,7 @@ private fun MenuLainnyaHome(
                 Text(
                     text = "Fitur ibadah & pembelajaran lainnya",
                     style = MaterialTheme.typography.bodySmall,
-                    color = DarkColors.TextSecondary
+                    color = DarkColors.HeaderSubtitle
                 )
             }
         }

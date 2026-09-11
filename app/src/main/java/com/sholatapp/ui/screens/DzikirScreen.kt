@@ -87,7 +87,7 @@ fun DzikirScreen() {
             Text(
                 text = "$totalCompleted/${DzikirData.getAllDzikir().size} dzikir selesai hari ini",
                 style = MaterialTheme.typography.bodyMedium,
-                color = DarkColors.TextSecondary
+                color = DarkColors.HeaderSubtitle
             )
             
             // Category tabs

@@ -58,7 +58,7 @@ fun IbadahScreen() {
             Text(
                 text = "Pantau dan tingkatkan kualitas ibadah harianmu",
                 style = MaterialTheme.typography.bodySmall,
-                color = DarkColors.TextSecondary
+                color = DarkColors.HeaderSubtitle
             )
         }
 

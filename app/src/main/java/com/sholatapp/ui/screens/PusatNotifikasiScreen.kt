@@ -54,7 +54,7 @@ fun PusatNotifikasiScreen(
                 Text(
                     text = "Status pengingat sholat Anda",
                     style = MaterialTheme.typography.bodySmall,
-                    color = DarkColors.TextSecondary
+                    color = DarkColors.HeaderSubtitle
                 )
             }
         }

@@ -55,7 +55,7 @@ fun AsmaulHusnaScreen(onBack: () -> Unit) {
                 Text(
                     text = "99 Nama Allah yang Indah",
                     style = MaterialTheme.typography.bodySmall,
-                    color = DarkColors.TextSecondary
+                    color = DarkColors.HeaderSubtitle
                 )
             }
         }
