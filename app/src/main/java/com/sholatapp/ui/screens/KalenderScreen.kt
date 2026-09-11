@@ -258,7 +258,7 @@ fun KalenderScreen(
                     ) {
                         if (dayNum in 1..maxDay) {
                             val isToday = dayNum == todayDay
-                            val isJumat = col == 5
+                            val isJumat = col == 4 // kolom Jumat (Senin=0 ... Jumat=4, Sabtu=5, Ahad=6)
                             val (_, hDay, hMonthName) = HijriCalculator.gregorianToHijri(viewYear, viewMonth + 1, dayNum)
                             val isEvent = events.any { it.hijriDay == hDay && it.hijriMonth == HijriCalculator.gregorianToHijri(viewYear, viewMonth + 1, dayNum).second }
 
