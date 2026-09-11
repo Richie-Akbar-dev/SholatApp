@@ -20,8 +20,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -30,8 +30,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.sholatapp.R
 import com.sholatapp.model.PrayerInfo
-import com.sholatapp.ui.theme.DarkColors
 import com.sholatapp.viewmodel.PrayerViewModel
 import com.sholatapp.viewmodel.UiState
 import java.util.Calendar
@@ -60,10 +61,6 @@ private fun getTimePeriod(schedule: com.sholatapp.model.PrayerSchedule?): TimePe
     val currentSeconds = cal.get(Calendar.HOUR_OF_DAY) * 3600 +
         cal.get(Calendar.MINUTE) * 60 + cal.get(Calendar.SECOND)
 
-    // PAGI: setelah Subuh, sebelum Dzuhur
-    // SIANG: setelah Dzuhur, sebelum Ashar
-    // SENJA: setelah Ashar, sebelum/sesudah Isya
-    // MALAM: setelah Isya, sebelum Subuh
     return when {
         currentSeconds < schedule.fajr.totalSeconds -> TimePeriod.MALAM
         currentSeconds < schedule.dhuhr.totalSeconds -> TimePeriod.PAGI
@@ -73,28 +70,12 @@ private fun getTimePeriod(schedule: com.sholatapp.model.PrayerSchedule?): TimePe
     }
 }
 
-/**
- * URL gambar background untuk setiap periode waktu.
- * Diambil dari Pinterest via oEmbed — resolusi penuh (originals).
- */
-private object SalatBackgrounds {
-    // Pagi: gambar masjid pagi — https://pin.it/66Y17Krlc
-    // (pin ini sudah berisi 2 gambar yang digabung menjadi 1 komposit)
-    val PAGI_MAIN = "https://i.pinimg.com/originals/95/47/8b/95478ba93b40f1b1cd3bf753fb231538.jpg"
-    val PAGI_OVERLAY: String? = null // Tidak perlu overlay kedua, pin sudah komposit
-
-    // Siang: 1 gambar — https://pin.it/1i627AH4f
-    val SIANG = "https://i.pinimg.com/originals/b6/5e/a0/b65ea0f9aa98c5759b28533a3d7e1b13.jpg"
-
-    // Senja: 1 gambar — https://pin.it/7bV5qysVW
-    val SENJA = "https://i.pinimg.com/originals/6a/18/4b/6a184b782a26bb1ba5d5ab563a01fb28.jpg"
-
-    // Malam: 1 gambar — https://pin.it/6rS9dbORX
-    val MALAM = "https://i.pinimg.com/originals/44/04/2d/44042d86d7134f565d32e09d3ba6cd15.jpg"
-}
+/** Jendela "waktu sholat sedang berlangsung" (menit sejak adzan) — selaras Beranda v2.3. */
+private const val ONGOING_WINDOW_MIN = 30
 
 /**
- * Warna aksen per periode — semua tetap dalam skema hijau + emas aplikasi.
+ * Warna aksen halaman Salat — semua tetap dalam skema hijau + emas.
+ * v2.4: warna inline lama dipindahkan ke sini (NILAI TIDAK ADA YANG DIUBAH).
  */
 private object SalatPeriodColors {
     val Green = Color(0xFF1B4D3E)
@@ -107,27 +88,37 @@ private object SalatPeriodColors {
     val SurfaceOverlay = Color(0xCC0A1A0A) // semi-transparent dark
     val CardBg = Color(0xB3112211) // semi-transparent dark green
     val CardBorder = Color(0x33D4AF37) // subtle gold border
+
+    // v2.4 — konstanta tambahan (nilai dari warna inline lama)
+    val CheckGreen = Color(0xFF4CAF50)
+    val ErrorSoft = Color(0xFFE57373)
+    val OverlayMedium = Color(0xCC0A1A0A)
+    val OverlayDeep = Color(0xEE0A1A0A)
+    val OverlayTop = Color(0xDD0A1A0A)
+    val DividerGreen = Color(0x1A1B4D3E)
+    val HandFaint = Color(0x33FFFFFF)
+}
+
+/** Latar foto lokal per periode — offline permanen, tanpa hotlink internet (v2.4). */
+private fun backgroundResFor(period: TimePeriod): Int = when (period) {
+    TimePeriod.PAGI -> R.drawable.bg_salat_pagi
+    TimePeriod.SIANG -> R.drawable.bg_salat_siang
+    TimePeriod.SENJA -> R.drawable.bg_salat_senja
+    TimePeriod.MALAM -> R.drawable.bg_salat_malam
 }
 
 @Composable
 fun SalatScreen(
-    viewModel: PrayerViewModel
+    viewModel: PrayerViewModel,
+    onKalenderClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val schedule = uiState.prayerSchedule
-    val timePeriod = remember(schedule) { getTimePeriod(schedule) }
 
-    // Background images based on time period
-    val bgImageMain = remember(timePeriod) {
-        when (timePeriod) {
-            TimePeriod.PAGI -> SalatBackgrounds.PAGI_MAIN
-            TimePeriod.SIANG -> SalatBackgrounds.SIANG
-            TimePeriod.SENJA -> SalatBackgrounds.SENJA
-            TimePeriod.MALAM -> SalatBackgrounds.MALAM
-        }
-    }
+    // Periode latar dihitung ulang saat menit berganti (kunci = string "HH:mm")
+    val timePeriod = remember(schedule, uiState.currentTimeStr) { getTimePeriod(schedule) }
+    val bgRes = remember(timePeriod) { backgroundResFor(timePeriod) }
 
-    // Check if we're currently in Subuh time (for animation trigger)
     val cal = Calendar.getInstance()
     val currentSeconds = cal.get(Calendar.HOUR_OF_DAY) * 3600 +
         cal.get(Calendar.MINUTE) * 60 + cal.get(Calendar.SECOND)
@@ -140,13 +131,16 @@ fun SalatScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Background image layer
-            AsyncImage(
-                model = bgImageMain,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+        // Latar foto lokal dengan crossfade halus saat pergantian periode
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(bgRes)
+                .crossfade(300)
+                .build(),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
 
         // Dark gradient overlay for readability
         Box(
@@ -156,10 +150,9 @@ fun SalatScreen(
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color(0xCC0A1A0A),
-                            Color(0xEE0A1A0A)
-                        ),
-                        endY = 900f
+                            SalatPeriodColors.OverlayMedium,
+                            SalatPeriodColors.OverlayDeep
+                        )
                     )
                 )
         )
@@ -171,7 +164,7 @@ fun SalatScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xDD0A1A0A),
+                            SalatPeriodColors.OverlayTop,
                             Color.Transparent
                         )
                     )
@@ -192,28 +185,7 @@ fun SalatScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                // Header with location
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = SalatPeriodColors.Gold,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = uiState.locationAddress,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SalatPeriodColors.TextMuted,
-                        maxLines = 1
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
+                // Judul halaman — lokasi & tanggal cukup ditampilkan di Beranda (v2.4)
                 Text(
                     text = "Jadwal Salat",
                     style = MaterialTheme.typography.headlineMedium,
@@ -221,195 +193,659 @@ fun SalatScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                if (schedule != null) {
+                if (schedule == null) {
+                    // Lokasi gagal dideteksi — error state di ATAS + tombol coba lagi (v2.4)
+                    SalatErrorCard(
+                        message = uiState.errorMessage,
+                        onRetry = { viewModel.detectLocation() }
+                    )
+                } else {
                     // === SUBUH ANIMATION SECTION ===
                     if (isSubuhTime) {
                         SubuhAnimationCard(schedule = schedule)
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // === NEXT PRAYER HERO ===
-                    SalatNextPrayerHero(schedule = schedule, uiState = uiState)
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // === CLOCK + CHECKLIST ROW ===
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Left: Prayer checklist
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            val unchecked = schedule.prayerList.filter {
-                                it.nameKey !in uiState.checkedPrayers
-                            }
-                            if (unchecked.isEmpty()) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    null,
-                                    tint = SalatPeriodColors.Gold,
-                                    modifier = Modifier.size(40.dp)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    "Semua sholat\nselesai",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = SalatPeriodColors.Gold
-                                )
-                            } else {
-                                unchecked.forEachIndexed { index, prayer ->
-                                    val isNext = index == 0
-                                    SalatCheckItem(
-                                        prayer = prayer,
-                                        isNext = isNext,
-                                        onCheck = { viewModel.checkPrayer(it) }
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        // Right: Analog clock
-                        SalatAnalogClock(
-                            modifier = Modifier.weight(1.2f),
-                            uiState = uiState
-                        )
-                    }
+                    // === HERO: JAM ANALOG + SHOLAT BERIKUTNYA ===
+                    SalatHeroCard(schedule = schedule, uiState = uiState)
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // === FULL SCHEDULE LIST ===
-                    Text(
-                        text = "Detail Waktu Sholat",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = SalatPeriodColors.White,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    // === DETAIL WAKTU SHOLAT (naik ke bawah hero, v2.4) ===
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Detail Waktu Sholat",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SalatPeriodColors.White,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        val done = schedule.prayerList.count { it.nameKey in uiState.checkedPrayers }
+                        Text(
+                            text = "$done/5 selesai",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = SalatPeriodColors.Gold,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = SalatPeriodColors.CardBg
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp, SalatPeriodColors.CardBorder
-                        )
-                    ) {
-                        // Baris Imsak (10 menit sebelum Subuh) — hanya info, tidak bisa dicentang
-                        schedule.imsak?.let { imsak ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.WbTwilight,
-                                    null,
-                                    tint = SalatPeriodColors.Gold,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Text(
-                                    text = imsak.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = SalatPeriodColors.TextMuted,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = imsak.timeString,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = SalatPeriodColors.Gold,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            HorizontalDivider(
-                                modifier = Modifier.padding(start = 50.dp),
-                                color = Color(0x1A1B4D3E)
-                            )
-                        }
-
-                        schedule.allTimes.forEachIndexed { index, prayer ->
-                            val isPassed = prayer.totalSeconds <= currentSeconds
-                            val isChecked = prayer.nameKey in uiState.checkedPrayers
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(
-                                        enabled = !isChecked && prayer.nameKey != "sunrise"
-                                    ) {
-                                        viewModel.checkPrayer(prayer.nameKey)
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (prayer.nameKey == "sunrise") {
-                                    Icon(
-                                        Icons.Default.WbSunny,
-                                        null,
-                                        tint = SalatPeriodColors.Gold,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                } else if (isChecked) {
-                                    Icon(
-                                        Icons.Default.CheckCircle,
-                                        null,
-                                        tint = Color(0xFF4CAF50),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(20.dp)
-                                            .clip(CircleShape)
-                                            .border(
-                                                width = 1.5.dp,
-                                                color = SalatPeriodColors.CardBorder,
-                                                shape = CircleShape
-                                            )
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Text(
-                                    text = prayer.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (isChecked) SalatPeriodColors.TextMuted
-                                    else SalatPeriodColors.White,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = prayer.timeString,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = when {
-                                        isChecked -> SalatPeriodColors.TextMuted
-                                        isPassed && !isChecked -> SalatPeriodColors.TextMuted
-                                        else -> SalatPeriodColors.Gold
-                                    },
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            if (index < schedule.allTimes.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 50.dp),
-                                    color = Color(0x1A1B4D3E)
-                                )
-                            }
-                        }
-                    }
+                    SalatDetailCard(
+                        schedule = schedule,
+                        uiState = uiState,
+                        currentSeconds = currentSeconds,
+                        onToggleCheck = { nameKey ->
+                            if (nameKey in uiState.checkedPrayers) viewModel.uncheckPrayer(nameKey)
+                            else viewModel.checkPrayer(nameKey)
+                        },
+                        onKalenderClick = onKalenderClick
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+// ==================== PIL KECIL (Besok / Berikutnya) ====================
+@Composable
+private fun SalatPill(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(SalatPeriodColors.GoldLight)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = SalatPeriodColors.Green,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        )
+    }
+}
+
+// ==================== HERO: JAM ANALOG + SHOLAT BERIKUTNYA ====================
+/**
+ * Kartu hero v2.4:
+ * - Kiri  : jam analog 5 jarum (3 waktu nyata + 2 alarm hijau) menggantikan ring
+ * - Kanan : label + nama + waktu sholat berikutnya, pil "Besok" saat menuju Subuh esok
+ * - Bawah : hitung mundur 3 kotak (jam : menit : detik) / status "WAKTU SHOLAT"
+ */
+@Composable
+private fun SalatHeroCard(
+    schedule: com.sholatapp.model.PrayerSchedule,
+    uiState: UiState
+) {
+    val cal = Calendar.getInstance()
+    val nowSeconds = cal.get(Calendar.HOUR_OF_DAY) * 3600 +
+        cal.get(Calendar.MINUTE) * 60 + cal.get(Calendar.SECOND)
+    val prayers = schedule.prayerList // 5 sholat wajib
+
+    // Sholat yang sedang berlangsung (<=30 menit sejak adzan)
+    val ongoing = prayers.firstOrNull {
+        nowSeconds >= it.totalSeconds && nowSeconds < it.totalSeconds + ONGOING_WINDOW_MIN * 60
+    }
+
+    val nextIdx = prayers.indexOfFirst { it.totalSeconds > nowSeconds }
+    val isTomorrowFajr = nextIdx == -1
+    val nextPrayer = if (isTomorrowFajr) prayers.first() else prayers[nextIdx]
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = SalatPeriodColors.CardBg
+        ),
+        shape = RoundedCornerShape(20.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, SalatPeriodColors.CardBorder
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Baris atas: jam analog (kiri) + info sholat berikutnya (kanan)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    SalatAnalogClock(uiState = uiState)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Panah hijau = sholat berikutnya",
+                        style = TextStyle(
+                            fontSize = 9.sp,
+                            color = SalatPeriodColors.TextMuted,
+                            textAlign = TextAlign.Center
+                        ),
+                        textAlign = TextAlign.Center,
+                        maxLines = 2
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    if (ongoing != null) {
+                        Text(
+                            text = "WAKTU SHOLAT",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = SalatPeriodColors.Gold,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = ongoing.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = SalatPeriodColors.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = ongoing.timeString,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SalatPeriodColors.Gold,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    } else {
+                        Text(
+                            text = "SHOLAT BERIKUTNYA",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = SalatPeriodColors.TextMuted,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = nextPrayer.name,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = SalatPeriodColors.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (isTomorrowFajr) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                SalatPill(text = "Besok")
+                            }
+                        }
+                        Text(
+                            text = nextPrayer.timeString,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SalatPeriodColors.Gold,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (ongoing != null) {
+                // Status "sedang berlangsung" — selaras Beranda v2.3
+                val minutesLeft = ((ongoing.totalSeconds + ONGOING_WINDOW_MIN * 60 - nowSeconds) / 60)
+                    .coerceAtLeast(1)
+                Text(
+                    text = "Laksanakan segera · ±$minutesLeft menit lagi",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = SalatPeriodColors.TextOnBg.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                // Hitung mundur (jam : menit : detik) dalam 3 kotak
+                val countdown = uiState.countdownSeconds
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SalatCountdownUnit(value = countdown / 3600, label = "JAM")
+                    SalatColonSeparator()
+                    SalatCountdownUnit(value = (countdown % 3600) / 60, label = "MENIT")
+                    SalatColonSeparator()
+                    SalatCountdownUnit(value = countdown % 60, label = "DETIK")
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "menuju adzan",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SalatPeriodColors.TextOnBg.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+// ==================== KOTAK HITUNG MUNDUR ====================
+@Composable
+private fun SalatCountdownUnit(value: Int, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+                .border(1.dp, SalatPeriodColors.CardBorder, RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "%02d".format(value),
+                style = MaterialTheme.typography.titleMedium,
+                color = SalatPeriodColors.Gold,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = TextStyle(fontSize = 9.sp, color = SalatPeriodColors.TextMuted)
+        )
+    }
+}
+
+@Composable
+private fun SalatColonSeparator() {
+    Text(
+        text = ":",
+        style = MaterialTheme.typography.titleMedium,
+        color = SalatPeriodColors.TextOnBg.copy(alpha = 0.6f),
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(horizontal = 3.dp)
+    )
+}
+
+// ==================== JAM ANALOG 5 JARUM ====================
+/**
+ * Jam analog 5 jarum — fitur inti halaman ini (dipertahankan, desain dirapikan v2.4):
+ * - 3 jarum waktu nyata : jam & menit (putih), detik (emas)
+ * - 2 jarum alarm hijau : jam & menit sholat berikutnya + titik hijau di tepi
+ * Wajah minimalis: angka hanya 12 / 3 / 6 / 9 agar tetap terbaca di ukuran kecil.
+ */
+@Composable
+private fun SalatAnalogClock(uiState: UiState) {
+    val schedule = uiState.prayerSchedule ?: return
+    val cal = Calendar.getInstance()
+    // Alarm menunjuk sholat berikutnya; bila semua sudah dicentang → Subuh esok
+    val nextPrayer = schedule.prayerList.firstOrNull { it.nameKey !in uiState.checkedPrayers }
+        ?: schedule.prayerList.first()
+
+    val textMeasurer = rememberTextMeasurer()
+
+    Canvas(modifier = Modifier.size(112.dp)) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val radius = size.minDimension / 2f
+
+        // Wajah jam + bingkai emas tipis
+        drawCircle(SalatPeriodColors.CardBg, radius, center = Offset(cx, cy))
+        drawCircle(
+            SalatPeriodColors.CardBorder,
+            radius,
+            center = Offset(cx, cy),
+            style = Stroke(width = 1.5.dp.toPx())
+        )
+
+        // Tick menit (tipis) & jam (emas)
+        for (i in 0..59) {
+            val angle = Math.toRadians(i * 6.0 - 90.0)
+            if (i % 5 == 0) {
+                val innerR = radius - 12.dp.toPx()
+                val outerR = radius - 4.dp.toPx()
+                drawLine(
+                    SalatPeriodColors.Gold,
+                    Offset(
+                        cx + innerR * cos(angle).toFloat(),
+                        cy + innerR * sin(angle).toFloat()
+                    ),
+                    Offset(
+                        cx + outerR * cos(angle).toFloat(),
+                        cy + outerR * sin(angle).toFloat()
+                    ),
+                    strokeWidth = 2.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            } else {
+                val innerR = radius - 7.dp.toPx()
+                val outerR = radius - 4.dp.toPx()
+                drawLine(
+                    SalatPeriodColors.HandFaint,
+                    Offset(
+                        cx + innerR * cos(angle).toFloat(),
+                        cy + innerR * sin(angle).toFloat()
+                    ),
+                    Offset(
+                        cx + outerR * cos(angle).toFloat(),
+                        cy + outerR * sin(angle).toFloat()
+                    ),
+                    strokeWidth = 0.8.dp.toPx()
+                )
+            }
+        }
+
+        // Angka minimalis: 12 / 3 / 6 / 9
+        listOf(12, 3, 6, 9).forEach { n ->
+            val degree = if (n == 12) 0 else n * 30
+            val angle = Math.toRadians(degree.toDouble() - 90.0)
+            val textR = radius - 21.dp.toPx()
+            val x = cx + textR * cos(angle).toFloat()
+            val y = cy + textR * sin(angle).toFloat()
+            val textLayout = textMeasurer.measure(
+                text = n.toString(),
+                style = TextStyle(
+                    color = SalatPeriodColors.Gold.copy(alpha = 0.85f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            )
+            drawText(
+                textLayoutResult = textLayout,
+                topLeft = Offset(
+                    x - textLayout.size.width / 2f,
+                    y - textLayout.size.height / 2f
+                )
+            )
+        }
+
+        // Jarum alarm hijau: jam (pendek) + menit sholat berikutnya
+        val alarmHA = Math.toRadians(
+            nextPrayer.hour % 12 * 30.0 + nextPrayer.minute * 0.5 - 90.0
+        )
+        val alarmMA = Math.toRadians(nextPrayer.minute * 6.0 - 90.0)
+        drawLine(
+            SalatPeriodColors.CheckGreen,
+            Offset(cx, cy),
+            Offset(
+                cx + radius * 0.38f * cos(alarmHA).toFloat(),
+                cy + radius * 0.38f * sin(alarmHA).toFloat()
+            ),
+            strokeWidth = 3.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            SalatPeriodColors.CheckGreen,
+            Offset(cx, cy),
+            Offset(
+                cx + radius * 0.55f * cos(alarmMA).toFloat(),
+                cy + radius * 0.55f * sin(alarmMA).toFloat()
+            ),
+            strokeWidth = 2.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        // Titik hijau di tepi posisi sholat berikutnya
+        drawCircle(
+            SalatPeriodColors.CheckGreen,
+            3.dp.toPx(),
+            center = Offset(
+                cx + (radius - 3.dp.toPx()) * cos(alarmHA).toFloat(),
+                cy + (radius - 3.dp.toPx()) * sin(alarmHA).toFloat()
+            )
+        )
+
+        // Jarum waktu nyata: jam & menit (putih), detik (emas)
+        val nowH12 = cal.get(Calendar.HOUR_OF_DAY) % 12
+        val hourAngle = Math.toRadians(
+            nowH12 * 30.0 + cal.get(Calendar.MINUTE) * 0.5 - 90.0
+        )
+        val minuteAngle = Math.toRadians(
+            cal.get(Calendar.MINUTE) * 6.0 + cal.get(Calendar.SECOND) * 0.1 - 90.0
+        )
+        val secondAngle = Math.toRadians(
+            cal.get(Calendar.SECOND) * 6.0 - 90.0
+        )
+
+        drawLine(
+            Color.White,
+            Offset(cx, cy),
+            Offset(
+                cx + radius * 0.45f * cos(hourAngle).toFloat(),
+                cy + radius * 0.45f * sin(hourAngle).toFloat()
+            ),
+            strokeWidth = 3.5.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            Color.White,
+            Offset(cx, cy),
+            Offset(
+                cx + radius * 0.65f * cos(minuteAngle).toFloat(),
+                cy + radius * 0.65f * sin(minuteAngle).toFloat()
+            ),
+            strokeWidth = 2.5.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            SalatPeriodColors.Gold,
+            Offset(cx, cy),
+            Offset(
+                cx + radius * 0.7f * cos(secondAngle).toFloat(),
+                cy + radius * 0.7f * sin(secondAngle).toFloat()
+            ),
+            strokeWidth = 1.2.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+
+        // Titik tengah emas
+        drawCircle(SalatPeriodColors.Gold, 4.dp.toPx(), center = Offset(cx, cy))
+    }
+}
+
+// ==================== DETAIL WAKTU SHOLAT ====================
+/**
+ * Kartu detail v2.4:
+ * - Imsak & Terbit info-only (tidak bisa dicentang)
+ * - 5 sholat wajib: ketuk untuk centang, ketuk lagi untuk membatalkan (undo)
+ * - Pil "Berikutnya"/"Besok" pada baris sholat yang akan datang
+ * - Footer menuju Kalender Bulanan
+ */
+@Composable
+private fun SalatDetailCard(
+    schedule: com.sholatapp.model.PrayerSchedule,
+    uiState: UiState,
+    currentSeconds: Int,
+    onToggleCheck: (String) -> Unit,
+    onKalenderClick: () -> Unit
+) {
+    val cal = Calendar.getInstance()
+    val nextPrayer = schedule.getNextPrayer(
+        cal.get(Calendar.HOUR_OF_DAY),
+        cal.get(Calendar.MINUTE)
+    )
+    // Semua sudah lewat → getNextPrayer membungkus ke Subuh; tandai sebagai "Besok"
+    val isTomorrowFajr = nextPrayer != null &&
+        nextPrayer.nameKey == PrayerInfo.FAJR &&
+        nextPrayer.totalSeconds <= currentSeconds
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = SalatPeriodColors.CardBg
+        ),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, SalatPeriodColors.CardBorder
+        )
+    ) {
+        Column {
+            // Baris Imsak (10 menit sebelum Subuh) — hanya info, tidak bisa dicentang
+            schedule.imsak?.let { imsak ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.WbTwilight,
+                        null,
+                        tint = SalatPeriodColors.Gold,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = imsak.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = SalatPeriodColors.TextMuted,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = imsak.timeString,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = SalatPeriodColors.Gold,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 50.dp),
+                    color = SalatPeriodColors.DividerGreen
+                )
+            }
+
+            schedule.allTimes.forEachIndexed { index, prayer ->
+                val isSunrise = prayer.nameKey == PrayerInfo.SUNRISE
+                val isChecked = prayer.nameKey in uiState.checkedPrayers
+                val isPassed = prayer.totalSeconds <= currentSeconds
+                val isNext = nextPrayer != null && prayer.nameKey == nextPrayer.nameKey
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !isSunrise) { onToggleCheck(prayer.nameKey) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    when {
+                        isSunrise -> Icon(
+                            Icons.Default.WbSunny,
+                            null,
+                            tint = SalatPeriodColors.Gold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        isChecked -> Icon(
+                            Icons.Default.CheckCircle,
+                            null,
+                            tint = SalatPeriodColors.CheckGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        else -> Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .border(
+                                    width = 1.5.dp,
+                                    color = SalatPeriodColors.CardBorder,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = prayer.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (isChecked || (isPassed && !isChecked && !isNext))
+                            SalatPeriodColors.TextMuted
+                        else SalatPeriodColors.White,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (isNext) {
+                        SalatPill(text = if (isTomorrowFajr) "Besok" else "Berikutnya")
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = prayer.timeString,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = when {
+                            isChecked -> SalatPeriodColors.TextMuted
+                            isPassed && !isChecked -> SalatPeriodColors.TextMuted
+                            else -> SalatPeriodColors.Gold
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                if (index < schedule.allTimes.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 50.dp),
+                        color = SalatPeriodColors.DividerGreen
+                    )
+                }
+            }
+
+            // Footer: jembatan ke Kalender Bulanan
+            HorizontalDivider(color = SalatPeriodColors.DividerGreen)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onKalenderClick() }
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Lihat Kalender Bulanan ›",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = SalatPeriodColors.Gold,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+// ==================== ERROR STATE ====================
+@Composable
+private fun SalatErrorCard(
+    message: String?,
+    onRetry: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = SalatPeriodColors.CardBg
+        ),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, SalatPeriodColors.CardBorder
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                tint = SalatPeriodColors.ErrorSoft,
+                modifier = Modifier.size(34.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Jadwal tidak tersedia",
+                style = MaterialTheme.typography.titleMedium,
+                color = SalatPeriodColors.White,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = message ?: "Lokasi tidak dapat dideteksi. Periksa GPS dan izin lokasi, lalu coba lagi.",
+                style = MaterialTheme.typography.bodySmall,
+                color = SalatPeriodColors.TextMuted,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onRetry,
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SalatPeriodColors.Gold,
+                    contentColor = SalatPeriodColors.Green
+                )
+            ) {
+                Text(text = "Coba Lagi", fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -527,317 +963,6 @@ private fun SubuhAnimationCard(schedule: com.sholatapp.model.PrayerSchedule) {
                     )
                 }
             }
-        }
-    }
-}
-
-// ==================== NEXT PRAYER HERO CARD ====================
-@Composable
-private fun SalatNextPrayerHero(
-    schedule: com.sholatapp.model.PrayerSchedule,
-    uiState: UiState
-) {
-    val cal = Calendar.getInstance()
-    val nextPrayer = schedule.getNextPrayer(
-        cal.get(Calendar.HOUR_OF_DAY),
-        cal.get(Calendar.MINUTE)
-    )
-
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = SalatPeriodColors.CardBg
-        ),
-        shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp, SalatPeriodColors.CardBorder
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Sholat Berikutnya",
-                style = MaterialTheme.typography.labelLarge,
-                color = SalatPeriodColors.TextMuted,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = nextPrayer?.name ?: "--",
-                style = MaterialTheme.typography.headlineSmall,
-                color = SalatPeriodColors.Gold,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = nextPrayer?.timeString ?: "--:--",
-                style = MaterialTheme.typography.titleLarge,
-                color = SalatPeriodColors.White,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            val h = uiState.countdownSeconds / 3600
-            val m = (uiState.countdownSeconds % 3600) / 60
-            val s = uiState.countdownSeconds % 60
-            Text(
-                text = String.format("%02d:%02d:%02d", h, m, s),
-                style = MaterialTheme.typography.displaySmall,
-                color = SalatPeriodColors.Gold,
-                fontWeight = FontWeight.Light
-            )
-        }
-    }
-}
-
-// ==================== CHECKLIST ITEMS ====================
-@Composable
-private fun SalatCheckItem(
-    prayer: PrayerInfo,
-    isNext: Boolean,
-    onCheck: (String) -> Unit
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (isNext) Color(0x33D4AF37) else Color.Transparent)
-            .clickable(enabled = isNext) { onCheck(prayer.nameKey) }
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(if (isNext) 32.dp else 24.dp)
-                .then(if (isNext) Modifier.graphicsLayer {
-                    scaleX = scale; scaleY = scale
-                } else Modifier)
-                .clip(CircleShape)
-                .background(
-                    if (isNext) Color(0x26D4AF37) else Color.Transparent,
-                    CircleShape
-                )
-                .border(
-                    width = if (isNext) 2.dp else 1.dp,
-                    color = if (isNext) SalatPeriodColors.Gold
-                    else Color(0x33FFFFFF),
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isNext) {
-                Text(
-                    text = prayer.name.first().toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SalatPeriodColors.Gold,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = prayer.name,
-                style = if (isNext) MaterialTheme.typography.titleSmall
-                else MaterialTheme.typography.bodyMedium,
-                color = if (isNext) SalatPeriodColors.Gold
-                else SalatPeriodColors.White,
-                fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal
-            )
-            Text(
-                text = prayer.timeString,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isNext) SalatPeriodColors.GoldLight
-                else SalatPeriodColors.TextMuted
-            )
-        }
-    }
-}
-
-// ==================== ANALOG CLOCK ====================
-@Composable
-private fun SalatAnalogClock(
-    modifier: Modifier = Modifier,
-    uiState: UiState
-) {
-    val schedule = uiState.prayerSchedule ?: return
-    val cal = Calendar.getInstance()
-    val nextPrayer = schedule.prayerList
-        .firstOrNull { it.nameKey !in uiState.checkedPrayers }
-
-    Box(
-        modifier = modifier.fillMaxHeight(),
-        contentAlignment = Alignment.Center
-    ) {
-        val textMeasurer = rememberTextMeasurer()
-
-        Canvas(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .clip(CircleShape)
-        ) {
-            val cx = size.width / 2f
-            val cy = size.height / 2f
-            val radius = size.minDimension / 2f
-
-            // Clock face - semi-transparent dark
-            drawCircle(Color(0xB3112211), radius, center = Offset(cx, cy))
-            drawCircle(
-                SalatPeriodColors.Gold.copy(alpha = 0.4f),
-                radius,
-                center = Offset(cx, cy),
-                style = Stroke(width = 2.dp.toPx())
-            )
-
-            // Tick marks
-            for (i in 0..59) {
-                val angle = Math.toRadians(i * 6.0 - 90.0)
-                if (i % 5 == 0) {
-                    val innerR = radius - 14.dp.toPx()
-                    val outerR = radius - 4.dp.toPx()
-                    drawLine(
-                        SalatPeriodColors.Gold,
-                        Offset(
-                            cx + innerR * cos(angle).toFloat(),
-                            cy + innerR * sin(angle).toFloat()
-                        ),
-                        Offset(
-                            cx + outerR * cos(angle).toFloat(),
-                            cy + outerR * sin(angle).toFloat()
-                        ),
-                        strokeWidth = 2.dp.toPx(),
-                        cap = StrokeCap.Round
-                    )
-                } else {
-                    val innerR = radius - 8.dp.toPx()
-                    val outerR = radius - 4.dp.toPx()
-                    drawLine(
-                        Color(0x33FFFFFF),
-                        Offset(
-                            cx + innerR * cos(angle).toFloat(),
-                            cy + innerR * sin(angle).toFloat()
-                        ),
-                        Offset(
-                            cx + outerR * cos(angle).toFloat(),
-                            cy + outerR * sin(angle).toFloat()
-                        ),
-                        strokeWidth = 0.8.dp.toPx()
-                    )
-                }
-            }
-
-            // Numbers
-            for (i in 1..12) {
-                val angle = Math.toRadians(i * 30.0 - 90.0)
-                val textR = radius - 24.dp.toPx()
-                val x = cx + textR * cos(angle).toFloat()
-                val y = cy + textR * sin(angle).toFloat()
-                val textLayout = textMeasurer.measure(
-                    text = i.toString(),
-                    style = TextStyle(
-                        color = SalatPeriodColors.Gold,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                )
-                drawText(
-                    textLayoutResult = textLayout,
-                    topLeft = Offset(
-                        x - textLayout.size.width / 2f,
-                        y - textLayout.size.height / 2f
-                    )
-                )
-            }
-
-            // Alarm hands (green, behind current)
-            if (nextPrayer != null) {
-                val alarmH = nextPrayer.hour % 12
-                val alarmHA = Math.toRadians(
-                    alarmH * 30.0 + nextPrayer.minute * 0.5 - 90.0
-                )
-                val alarmMA = Math.toRadians(
-                    nextPrayer.minute * 6.0 - 90.0
-                )
-                drawLine(
-                    Color(0xFF4CAF50),
-                    Offset(cx, cy),
-                    Offset(
-                        cx + radius * 0.4f * cos(alarmHA).toFloat(),
-                        cy + radius * 0.4f * sin(alarmHA).toFloat()
-                    ),
-                    strokeWidth = 3.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    Color(0xFF4CAF50),
-                    Offset(cx, cy),
-                    Offset(
-                        cx + radius * 0.6f * cos(alarmMA).toFloat(),
-                        cy + radius * 0.6f * sin(alarmMA).toFloat()
-                    ),
-                    strokeWidth = 2.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-            }
-
-            // Current time hands (white)
-            val nowH12 = cal.get(Calendar.HOUR_OF_DAY) % 12
-            val hourAngle = Math.toRadians(
-                nowH12 * 30.0 + cal.get(Calendar.MINUTE) * 0.5 - 90.0
-            )
-            val minuteAngle = Math.toRadians(
-                cal.get(Calendar.MINUTE) * 6.0 + cal.get(Calendar.SECOND) * 0.1 - 90.0
-            )
-            val secondAngle = Math.toRadians(
-                cal.get(Calendar.SECOND) * 6.0 - 90.0
-            )
-
-            drawLine(
-                Color.White,
-                Offset(cx, cy),
-                Offset(
-                    cx + radius * 0.45f * cos(hourAngle).toFloat(),
-                    cy + radius * 0.45f * sin(hourAngle).toFloat()
-                ),
-                strokeWidth = 3.5.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-            drawLine(
-                Color.White,
-                Offset(cx, cy),
-                Offset(
-                    cx + radius * 0.65f * cos(minuteAngle).toFloat(),
-                    cy + radius * 0.65f * sin(minuteAngle).toFloat()
-                ),
-                strokeWidth = 2.5.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-            drawLine(
-                SalatPeriodColors.Gold,
-                Offset(cx, cy),
-                Offset(
-                    cx + radius * 0.7f * cos(secondAngle).toFloat(),
-                    cy + radius * 0.7f * sin(secondAngle).toFloat()
-                ),
-                strokeWidth = 1.2.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-
-            // Center dot
-            drawCircle(SalatPeriodColors.Gold, 4.dp.toPx(), center = Offset(cx, cy))
         }
     }
 }

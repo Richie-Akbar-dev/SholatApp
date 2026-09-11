@@ -1,5 +1,41 @@
 # Changelog — SholatApp
 
+## v2.4.0 (2026-09-11)
+
+Fokus: rombak halaman **Salat** (v2.4) menurut mockup & arahan user — jam analog 5 jarum masuk kartu hero, dua kolom dihapus, detail waktu naik, latar foto lokal offline.
+
+### ✨ Fitur Baru / Perubahan
+
+1. **Jam analog 5 jarum pindah ke kartu hero** — menggantikan posisi ring: 3 jarum waktu nyata (jam & menit putih, detik emas) + 2 jarum alarm hijau yang menunjuk waktu sholat berikutnya, lengkap titik hijau di tepi jam. Desain wajah jam dirapikan (angka minimalis 12/3/6/9), fitur 5 jarum tetap 100%.
+2. **Legenda jam** — keterangan kecil "Panah hijau = sholat berikutnya" di bawah jam.
+3. **Hitung mundur 3 kotak di halaman Salat** — gaya sama dengan Beranda (JAM : MENIT : DETIK) + keterangan "menuju adzan"; saat memasuki 30 menit pertama setelah adzan berubah menjadi status **"WAKTU SHOLAT — Laksanakan segera · ±X menit lagi"**.
+4. **Tag "Besok"** — pil emas pada kartu hero & baris detail saat menghitung mundur menuju Subuh esok hari.
+5. **Undo centang** — baris sholat yang sudah dicentang kini bisa diketuk lagi untuk membatalkan (fungsi `uncheckPrayer` baru); sebelumnya salah tekan tercatat sampai besok.
+6. **Progres harian "x/5 selesai"** — tampil di baris judul "Detail Waktu Sholat" (pengganti kolom checklist yang dihapus).
+7. **Footer "Lihat Kalender Bulanan ›"** — jembatan langsung dari jadwal harian ke halaman Kalender.
+8. **Error state di atas + "Coba Lagi"** — saat lokasi gagal dideteksi, halaman tidak lagi kosong; menampilkan kartu error dengan tombol coba ulang (`detectLocation()`).
+9. **Latar foto lokal (offline permanen)** — 4 foto siluet masjid dibundel di `drawable-nodpi` (pagi/siang/senja/malam, ±334 KB total) menggantikan hotlink Pinterest yang bisa mati; peralihan gambar memakai crossfade 300 ms.
+10. **Latar ikut berganti waktu** — periode Pagi/Siang/Senja/Malam kini dihitung ulang setiap menit, bukan sekali saat halaman dibuka.
+
+### 🎨 UI/Design (identitas hijau–emas TIDAK berubah)
+
+1. **Header diringkas** — hanya judul "Jadwal Salat"; lokasi & tanggal Masehi-Hijriah cukup ditampilkan sekali di Beranda (tidak dobel lagi).
+2. **Dua kolom (checklist + jam) dihapus** — pelacakan cukup lewat kartu Detail; layar lebih ringkas dan tidak dobel info.
+3. **Detail Waktu Sholat naik** tepat di bawah kartu hero; Imsak & Terbit tetap info-only (tanpa ceklis).
+4. **Pil "Berikutnya"** pada baris sholat yang akan datang di kartu Detail.
+5. **Semua warna inline dipindahkan ke `SalatPeriodColors`** — nilai warna tidak ada yang diubah.
+
+### 🗑️ Dihapus
+
+- Kolom "Target Hari Ini" & kartu jam analog terpisah (digabung ke hero).
+- Baris lokasi di header halaman Salat.
+- `SalatBackgrounds` (URL Pinterest) & `SalatCheckItem` (checklist kolom kiri).
+
+### 🔧 Lainnya
+
+- Wiring baru: `SalatScreen(onKalenderClick=...)` → `AppScreen.Kalender` di MainActivity.
+- versionCode 5, versionName 2.4.0.
+
 ## v2.3.0 (2026-09-11)
 
 Fokus: perombakan Beranda (dashboard) sesuai mockup yang disetujui + Al-Qur'an lengkap 114 surah yang disatukan ke halaman Zikir.

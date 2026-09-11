@@ -103,6 +103,17 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
+     * Batalkan centang sholat hari ini (undo salah tekan) — v2.4.
+     */
+    fun uncheckPrayer(nameKey: String) {
+        val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+        val current = checklistPrefs.getStringSet("${today}_checked", emptySet())?.toMutableSet() ?: mutableSetOf()
+        current.remove(nameKey)
+        checklistPrefs.edit().putStringSet("${today}_checked", current).apply()
+        _uiState.update { it.copy(checkedPrayers = current.toSet()) }
+    }
+
+    /**
      * Detect user's current location.
      */
     fun detectLocation() {

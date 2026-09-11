@@ -157,7 +157,8 @@ class MainActivity : ComponentActivity() {
                                             onLainnyaClick = { overlayScreen = AppScreen.MenuLainnya }
                                         )
                                         AppTab.SALAT -> SalatScreen(
-                                            viewModel = viewModel
+                                            viewModel = viewModel,
+                                            onKalenderClick = { overlayScreen = AppScreen.Kalender }
                                         )
                                         AppTab.TASBIH -> DzikirScreen(
                                             onQuranClick = { overlayScreen = AppScreen.AlQuran }
