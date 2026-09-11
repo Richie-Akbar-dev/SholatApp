@@ -1,5 +1,35 @@
 # Changelog — SholatApp
 
+## v2.5.0 (2026-09-12)
+
+Fokus: rombak halaman **Zikir** menurut mockup & 5 keputusan user — chip kategori diperbaiki, counter lebih manusiawi (undo tahan 3 detik), pop up fokus menggantikan hero tasbih, konten dzikir diperluas dengan item autentik.
+
+### 🐞 Perbaikan
+
+1. **Chip kategori overflow (bug fungsional)** — 4 chip dalam `Row` statis membuat chip "Dzikir Umum" terpotong/tak terjangkau di hampir semua ukuran layar. Kini: label pendek (Pagi · Petang · Setelah Sholat · Umum) dalam baris scroll-safe.
+2. **Salah hitung tak bisa dikoreksi** — kini tahan lingkaran ±3 detik untuk mengurangi 1 (getar lebih panjang sebagai penanda); sebelumnya salah tap tercatat sampai besok.
+3. **Dua angka progres membingungkan** — bar progres 3dp tanpa label dihapus; diganti header section berlabel "Dzikir Pagi · 2/7 selesai" + bar emas.
+
+### ✨ Fitur Baru / Perubahan
+
+1. **Pop up fokus** — ketuk kartu dzikir → lembar bawah berisi judul, teks Arab/Latin/Arti **penuh** (bisa digulir), dan counter besar untuk menghitung nyaman (ketuk +1, tahan 3 detik −1).
+2. **Kategori otomatis sesuai jam** — 04–10 buka Dzikir Pagi, 11–15 Setelah Sholat, selain itu Dzikir Petang; sebelumnya selalu terbuka di Pagi.
+3. **Chip judul per dzikir** — tiap kartu kini bernama ("Tasbih", "Ayat Kursi", "Sayyidul Istighfar", dst.); field `title` baru di `DzikirItem`.
+4. **Kartu selesai** — lingkaran berubah centang + label "Selesai", kartu ikut berubah hijau lembut (gaya mockup).
+5. **Konten diperluas 22 → 29 item** — tambahan autentik Hisnul Muslim: *Sayyidul Istighfar* (pagi & petang), *Asbahna/Amsayna wa Asbahal-Mulk*, *Radhitu Billah* (pagi & petang), *Subhanallahi 'Adada Khalqih* (umum).
+6. **Latin ditampilkan miring berkutip, arti dipotong 3 baris** — teks penuh tersedia di pop up fokus; daftar lebih ringkas.
+
+### 🗑️ Dihapus
+
+- Hero "Tasbih" terpisah (keputusan user: pop up fokus pada tiap kartu menggantikannya).
+- Ikon aksi di header halaman.
+
+### 🔧 Lainnya
+
+- Palet warna tidak berubah; nav bawah tidak disentuh.
+- `DzikirCategory` dapat `shortLabel`; `displayName` tetap dipertahankan.
+- versionCode 6, versionName 2.5.0.
+
 ## v2.4.0 (2026-09-11)
 
 Fokus: rombak halaman **Salat** (v2.4) menurut mockup & arahan user — jam analog 5 jarum masuk kartu hero, dua kolom dihapus, detail waktu naik, latar foto lokal offline.

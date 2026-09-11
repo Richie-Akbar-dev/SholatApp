@@ -150,7 +150,7 @@ fun SettingsScreen(
 
             // About Section
             SectionHeader(title = "Tentang")
-            SettingInfoRow(title = "Versi", value = "2.4.0")
+            SettingInfoRow(title = "Versi", value = "2.5.0")
             SettingInfoRow(title = "Perhitungan", value = "Berdasarkan posisi matahari astronomis")
             SettingInfoRow(title = "Fitur", value = "Sholat, Ibadah, Tilawah, Doa, Mushaf, Asmaul Husna, DND Fokus")
 
