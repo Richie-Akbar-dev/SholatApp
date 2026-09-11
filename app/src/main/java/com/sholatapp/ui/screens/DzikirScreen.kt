@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,7 +38,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun DzikirScreen() {
+fun DzikirScreen(onQuranClick: () -> Unit = {}) {
     val context = LocalContext.current
     var selectedCategory by remember { mutableStateOf(DzikirCategory.PAGI) }
     val prefs = context.getSharedPreferences("dzikir_prefs", Context.MODE_PRIVATE)
@@ -114,6 +116,61 @@ fun DzikirScreen() {
                         )
                     }
                 }
+            }
+        }
+
+        // Entri Al-Qur'an (v2.3): mushaf lengkap 114 surah kini disatukan
+        // di halaman Zikir — juga bisa dibuka dari tindakan cepat Beranda
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .clickable(onClick = onQuranClick),
+            colors = CardDefaults.cardColors(containerColor = DarkColors.Surface),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(DarkColors.PrimaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.MenuBook,
+                        contentDescription = "Al-Qur'an",
+                        tint = DarkColors.Primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Al-Qur'an",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = DarkColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "114 Surah lengkap · Arab, Latin & Arti",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = DarkColors.TextTertiary,
+                        maxLines = 1
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = DarkColors.TextTertiary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 

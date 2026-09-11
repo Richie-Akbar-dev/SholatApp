@@ -1,5 +1,46 @@
 # Changelog — SholatApp
 
+## v2.3.0 (2026-09-11)
+
+Fokus: perombakan Beranda (dashboard) sesuai mockup yang disetujui + Al-Qur'an lengkap 114 surah yang disatukan ke halaman Zikir.
+
+### ✨ Fitur Baru
+
+1. **Al-Qur'an lengkap 114 surah / 6236 ayat, 100% offline** — teks Arab, transliterasi Latin, dan arti (Kemenag RI) dibundel permanen di dalam aplikasi (`assets/quran/`, ±3,3 MB, sumber equran.id); tidak butuh internet sama sekali.
+2. **Pembaca Al-Qur'an 3 unsur** — setiap ayat menampilkan **(A) tulisan Arab** (besar, rata kanan), **(B) Arab-Latin** (membantu yang belum lancar), dan **(C) arti** dalam Bahasa Indonesia.
+3. **Entri Al-Qur'an di halaman Zikir** — kartu "Al-Qur'an · 114 Surah lengkap" di atas daftar dzikir (mushaf kini disatukan di satu tempat, sesuai permintaan).
+4. **Pencarian surah** — cari berdasarkan nama (Al-Fatihah, "Kausar", arti) maupun nomor surah.
+5. **Jam digital di Beranda** — jam hidup ditampilkan di tengah cincin progres kartu sholat, lengkap label zona waktu otomatis (WIB/WITA/WIT sesuai perangkat).
+6. **Tanggal Hijriah di Beranda** — header kini menampilkan "Senin, 15 September 2026 · 3 Rabiul Awal 1447 H" (kalkulator offline sama dengan Kalender).
+7. **Salam dinamis** — "Ahlan wa sahlan, Selamat pagi/siang/sore/malam" menyesuaikan jam perangkat.
+8. **Status "Waktu Sholat sedang berlangsung"** — dalam 30 menit pertama setelah adzan, kartu utama berubah menjadi "WAKTU SHOLAT — Laksanakan segera · ±X menit lagi".
+9. **Tag "Besok"** — setelah Isya, kartu sholat berikutnya menandai countdown menuju Subuh esok hari agar tidak salah paham.
+10. **Tombol "Coba Lagi"** — saat deteksi lokasi gagal, kartu error kini tampil **di atas** (menggantikan posisi kartu utama) dengan tombol coba ulang; sebelumnya kartu error tersembunyi di dasar layar tanpa aksi.
+
+### 🎨 UI/Design — Beranda (penataan ulang, warna TIDAK berubah)
+
+1. **Cincin progres emas** — busur melingkar terisi dari sholat terakhir menuju sholat berikutnya; jam digital di tengahnya.
+2. **Penempatan baru**: Mahfudzot pindah ke dasar Beranda sebagai penutup renungan; tinggi kartu kini mengikuti panjang teks (tidak ada pemotongan) dan tanpa sumber/periwayat sesuai permintaan.
+3. **Pil "Berikutnya"** — kartu sholat yang akan datang diberi penanda pil emas di samping namanya.
+4. **Tautan "Lihat Detail ›"** — grid jadwal kini memiliki affordance yang jelas menuju halaman Salat.
+5. **Tindakan cepat 3 kartu**: **Kiblat · Al-Qur'an · Kalender** (Zikir & Puasa keluar karena keduanya sudah punya tab sendiri di navigasi bawah).
+6. **Menu Lainnya dirapikan** — item Mushaf keluar (pindah total ke halaman Zikir); sisanya: Doa Harian, Mutabaah, Tilawah, Asmaul Husna.
+
+### 🗑️ Dihapus
+
+1. **MushafScreen lama dari navigasi** — digantikan QuranScreen baru (24-surah → 114-surah penuh); posisi "Terakhir Dibaca" lama tetap terbaca (preferensi sama).
+
+### 📁 Berkas Baru
+
+- `ui/screens/QuranScreen.kt` (browser + pembaca)
+- `data/QuranRepository.kt` (pemuat aset JSON, tanpa dependensi baru)
+- `assets/quran/index.json` + `assets/quran/surat/001–114.json` (114 surah, 6236 ayat)
+
+### 📝 Catatan Build
+
+- Ukuran APK bertambah ±1–2 MB (aset teks terkompresi) — tidak ada dependensi baru.
+- Seluruh preferensi lama tetap kompatibel; tidak ada migrasi data.
+
 ## v2.2.0 (2026-09-11)
 
 Fokus: konsistensi tema & perombakan navigasi (tombol back + transisi animasi).

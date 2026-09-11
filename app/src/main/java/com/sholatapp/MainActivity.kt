@@ -62,6 +62,7 @@ sealed class AppScreen {
     data object MenuLainnya : AppScreen()
     data object PusatNotifikasi : AppScreen()
     data object AzanPicker : AppScreen()
+    data object AlQuran : AppScreen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -148,8 +149,7 @@ class MainActivity : ComponentActivity() {
                                             viewModel = viewModel,
                                             userName = userName,
                                             onKiblatClick = { overlayScreen = AppScreen.Kiblat },
-                                            onTasbihClick = { selectedTab = AppTab.TASBIH },
-                                            onPuasaClick = { selectedTab = AppTab.PUASA },
+                                            onQuranClick = { overlayScreen = AppScreen.AlQuran },
                                             onKalenderClick = { overlayScreen = AppScreen.Kalender },
                                             onNotificationClick = { overlayScreen = AppScreen.PusatNotifikasi },
                                             onSettingsClick = { selectedTab = AppTab.PROFIL },
@@ -159,7 +159,9 @@ class MainActivity : ComponentActivity() {
                                         AppTab.SALAT -> SalatScreen(
                                             viewModel = viewModel
                                         )
-                                        AppTab.TASBIH -> DzikirScreen()
+                                        AppTab.TASBIH -> DzikirScreen(
+                                            onQuranClick = { overlayScreen = AppScreen.AlQuran }
+                                        )
                                         AppTab.PUASA -> PuasaScreen(viewModel = viewModel)
                                         AppTab.PROFIL -> SettingsScreen(
                                             uiState = uiState,
@@ -210,6 +212,9 @@ class MainActivity : ComponentActivity() {
                                             is AppScreen.AzanPicker -> AzanPickerScreen(
                                                 azanPlayer = azanPlayer,
                                                 onComplete = { overlayScreen = null }
+                                            )
+                                            is AppScreen.AlQuran -> QuranScreen(
+                                                onBack = { overlayScreen = null }
                                             )
                                             null -> { /* tidak ada overlay */ }
                                         }

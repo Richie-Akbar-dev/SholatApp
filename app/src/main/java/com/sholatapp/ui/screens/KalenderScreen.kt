@@ -39,6 +39,10 @@ private object KalenderColors {
 }
 
 // ==================== HIJRIAH CALCULATOR (offline) ====================
+
+/** Info Hijriah lengkap (v2.3 — dipakai juga oleh header Beranda). */
+data class HijriInfo(val day: Int, val month: Int, val year: Int, val monthName: String)
+
 object HijriCalculator {
     private data class HijriDate(val day: Int, val month: Int, val year: Int)
 
@@ -55,6 +59,18 @@ object HijriCalculator {
         val jd = gregorianToJd(year, month, day)
         val hijri = jdToHijri(jd)
         return Triple(hijri.day, hijri.month, hijriMonthNames[hijri.month - 1])
+    }
+
+    /** Convert Gregorian ke Hijriah lengkap dgn tahun (v2.3 — header Beranda). */
+    fun toHijriInfo(year: Int, month: Int, day: Int): HijriInfo {
+        val jd = gregorianToJd(year, month, day)
+        val hijri = jdToHijri(jd)
+        return HijriInfo(
+            day = hijri.day,
+            month = hijri.month,
+            year = hijri.year,
+            monthName = hijriMonthNames[hijri.month - 1]
+        )
     }
 
     /** Get Hijri month name */

@@ -1,5 +1,6 @@
 package com.sholatapp.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,7 +16,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,13 +29,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sholatapp.data.MahfudzotData
 import com.sholatapp.model.PrayerInfo
-import com.sholatapp.ui.theme.DarkColors
 import com.sholatapp.viewmodel.PrayerViewModel
 import com.sholatapp.viewmodel.UiState
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /**
- * Light theme colors for Home Screen (Namaz Vakti style)
+ * Light theme colors for Home Screen (Namaz Vakti style) — TIDAK berubah sejak v2.0.
+ * v2.3 hanya menata ulang penempatan & menambah konten, warna tetap sama
+ * agar user tidak bingung (permintaan eksplisit).
  */
 private object HomeLightColors {
     val Background = Color(0xFFF5F5F0)
@@ -51,13 +60,15 @@ private object HomeLightColors {
     val CheckGreen = Color(0xFF22C55E)
 }
 
+/** Radius jendela waktu sholat "sedang berlangsung" (menit). */
+private const val ONGOING_WINDOW_MIN = 30
+
 @Composable
 fun HomeScreen(
     viewModel: PrayerViewModel,
     userName: String,
     onKiblatClick: () -> Unit,
-    onTasbihClick: () -> Unit,
-    onPuasaClick: () -> Unit,
+    onQuranClick: () -> Unit,
     onKalenderClick: () -> Unit,
     onNotificationClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -87,27 +98,34 @@ fun HomeScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
             ) {
-                // Header: Location + Date
+                // 1. Header: lokasi + tanggal Masehi & Hijriah
                 HomeHeaderSection(
                     locationAddress = uiState.locationAddress,
-                    isLoading = uiState.isLoading,
                     onRefreshLocation = { viewModel.detectLocation() },
                     onNotificationClick = onNotificationClick,
                     onSettingsClick = onSettingsClick
                 )
 
-                // Greeting + Mahfudzot
-                GreetingSection(userName = userName, mahfudzot = mahfudzot)
+                // 2. Salam dinamis (pagi/siang/sore/malam)
+                GreetingSection(userName = userName)
 
-                // Hero Card: Next Prayer + Countdown
-                if (schedule != null) {
-                    NextPrayerHeroCard(
-                        schedule = schedule,
-                        uiState = uiState
+                // 3. Kartu error — PINDAH KE ATAS (v2.3): sebelumnya di dasar
+                //    layar sehingga tidak terlihat. Kini menggantikan posisi
+                //    hero saat lokasi gagal, lengkap dengan tombol Coba Lagi.
+                if (uiState.errorMessage != null) {
+                    ErrorCard(
+                        message = uiState.errorMessage!!,
+                        prominent = schedule == null,
+                        onRetry = { viewModel.detectLocation() }
                     )
                 }
 
-                // Prayer Times Grid (2 columns)
+                // 4. Hero Card: ring progres + jam + sholat berikutnya
+                if (schedule != null) {
+                    NextPrayerHeroCard(schedule = schedule, uiState = uiState)
+                }
+
+                // 5. Grid jadwal 6 waktu + tautan Lihat Detail
                 if (schedule != null) {
                     PrayerTimesGrid(
                         schedule = schedule,
@@ -116,16 +134,15 @@ fun HomeScreen(
                     )
                 }
 
-                // Quick Actions
+                // 6. Tindakan cepat: Kiblat · Al-Qur'an · Kalender
                 QuickActionsSection(
                     onKiblatClick = onKiblatClick,
-                    onTasbihClick = onTasbihClick,
-                    onPuasaClick = onPuasaClick,
+                    onQuranClick = onQuranClick,
                     onKalenderClick = onKalenderClick,
                     onLainnyaClick = onLainnyaClick
                 )
 
-                // Prayer Tracking List
+                // 7. Pelacakan sholat (checklist harian)
                 if (schedule != null) {
                     PrayerTrackingSection(
                         schedule = schedule,
@@ -134,36 +151,9 @@ fun HomeScreen(
                     )
                 }
 
-                // Error message
-                if (uiState.errorMessage != null) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFFEE2E2)
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                null,
-                                tint = Color(0xFFDC2626),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                uiState.errorMessage!!,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF991B1B)
-                            )
-                        }
-                    }
-                }
+                // 8. Mahfudzot — PINDAH KE BAWAH (v2.3): penutup renungan,
+                //    tinggi kartu menyesuaikan panjang teks, tanpa sumber.
+                MahfudzotCard(mahfudzot = mahfudzot)
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -171,11 +161,10 @@ fun HomeScreen(
     }
 }
 
-// ==================== HEADER SECTION ====================
+// ==================== HEADER: LOKASI + TANGGAL ====================
 @Composable
 private fun HomeHeaderSection(
     locationAddress: String,
-    isLoading: Boolean,
     onRefreshLocation: () -> Unit,
     onNotificationClick: () -> Unit,
     onSettingsClick: () -> Unit
@@ -187,6 +176,16 @@ private fun HomeHeaderSection(
         "Juli", "Agustus", "September", "Oktober", "November", "Desember"
     )
     val dateStr = "${dayNames[today.get(Calendar.DAY_OF_WEEK) - 1]}, ${today.get(Calendar.DAY_OF_MONTH)} ${monthNames[today.get(Calendar.MONTH)]} ${today.get(Calendar.YEAR)}"
+
+    // Tanggal Hijriah (kalkulator offline yang sama dgn KalenderScreen)
+    val hijriStr = remember {
+        val h = HijriCalculator.toHijriInfo(
+            today.get(Calendar.YEAR),
+            today.get(Calendar.MONTH) + 1,
+            today.get(Calendar.DAY_OF_MONTH)
+        )
+        "${h.day} ${h.monthName} ${h.year} H"
+    }
 
     Column(
         modifier = Modifier
@@ -213,35 +212,27 @@ private fun HomeHeaderSection(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            // Ikon kanan atas: notifikasi + pengaturan
-            Row {
-                IconButton(
-                    onClick = onNotificationClick,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Notifications,
-                        contentDescription = "Notifikasi",
-                        tint = HomeLightColors.TextSecondary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Pengaturan",
-                        tint = HomeLightColors.TextSecondary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+            IconButton(onClick = onNotificationClick, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = "Notifikasi",
+                    tint = HomeLightColors.TextSecondary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            IconButton(onClick = onSettingsClick, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Pengaturan",
+                    tint = HomeLightColors.TextSecondary,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
+        // Tanggal Masehi · Hijriah
         Text(
-            text = dateStr,
+            text = "$dateStr  ·  $hijriStr",
             style = MaterialTheme.typography.bodySmall,
             color = HomeLightColors.TextTertiary
         )
@@ -253,20 +244,23 @@ private fun HomeHeaderSection(
     )
 }
 
-// ==================== GREETING + MAHFUDZOT ====================
+// ==================== SALAM DINAMIS ====================
 @Composable
-private fun GreetingSection(
-    userName: String,
-    mahfudzot: com.sholatapp.data.Mahfudzot
-) {
+private fun GreetingSection(userName: String) {
+    val now = Calendar.getInstance()
+    val waktu = when (now.get(Calendar.HOUR_OF_DAY)) {
+        in 4..10 -> "pagi"
+        in 11..14 -> "siang"
+        in 15..17 -> "sore"
+        else -> "malam"
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Greeting
         Text(
-            text = "Assalamualaikum,",
+            text = "Ahlan wa sahlan, Selamat $waktu",
             style = MaterialTheme.typography.bodyMedium,
             color = HomeLightColors.TextSecondary
         )
@@ -276,129 +270,217 @@ private fun GreetingSection(
             color = HomeLightColors.TextPrimary,
             fontWeight = FontWeight.Bold
         )
+    }
+}
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Mahfudzot card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = HomeLightColors.GoldLight
-            ),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+// ==================== KARTU ERROR + COBA LAGI ====================
+@Composable
+private fun ErrorCard(
+    message: String,
+    prominent: Boolean,
+    onRetry: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEE2E2)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = if (prominent) Alignment.CenterHorizontally else Alignment.Start
         ) {
-            Column(
-                modifier = Modifier.padding(14.dp)
-            ) {
-                Text(
-                    text = mahfudzot.arabic,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = HomeLightColors.TextGold,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Right,
-                    modifier = Modifier.fillMaxWidth()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFDC2626),
+                    modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = mahfudzot.meaning,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = HomeLightColors.TextSecondary,
-                    lineHeight = 18.sp
+                    message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF991B1B),
+                    modifier = Modifier.weight(1f)
                 )
+            }
+            if (prominent) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onRetry,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFDC2626),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Coba Lagi")
+                }
             }
         }
     }
 }
 
-// ==================== HERO CARD: NEXT PRAYER + COUNTDOWN ====================
+// ==================== HERO CARD: RING + SHOLAT BERIKUTNYA ====================
 @Composable
 private fun NextPrayerHeroCard(
     schedule: com.sholatapp.model.PrayerSchedule,
     uiState: UiState
 ) {
     val cal = Calendar.getInstance()
-    val nextPrayer = schedule.getNextPrayer(
-        cal.get(Calendar.HOUR_OF_DAY),
-        cal.get(Calendar.MINUTE)
-    )
+    val nowSeconds = cal.get(Calendar.HOUR_OF_DAY) * 3600 +
+            cal.get(Calendar.MINUTE) * 60 + cal.get(Calendar.SECOND)
+    val prayers = schedule.prayerList // 5 sholat wajib
+
+    // Sholat yang sedang berlangsung (≤30 menit sejak adzan)
+    val ongoing = prayers.firstOrNull {
+        nowSeconds >= it.totalSeconds && nowSeconds < it.totalSeconds + ONGOING_WINDOW_MIN * 60
+    }
+
+    // Sholat berikutnya & sebelumnya (untuk progres ring)
+    val nextIdx = prayers.indexOfFirst { it.totalSeconds > nowSeconds }
+    val isTomorrowFajr = nextIdx == -1
+    val nextPrayer = if (isTomorrowFajr) prayers.first() else prayers[nextIdx]
+    val prevPrayer = if (nextIdx <= 0) prayers.last() else prayers[nextIdx - 1]
+
+    val span = (nextPrayer.totalSeconds - prevPrayer.totalSeconds).let {
+        if (it <= 0) it + 86400 else it
+    }
+    val elapsed = (nowSeconds - prevPrayer.totalSeconds).let {
+        if (it < 0) it + 86400 else it
+    }
+    val progress = (elapsed.toFloat() / span.toFloat()).coerceIn(0f, 1f)
+
+    // Jam digital + zona waktu otomatis (WIB/WITA/WIT sesuai perangkat)
+    val zoneLabel = remember {
+        val tz = SimpleDateFormat("zzz", Locale.getDefault()).format(Date())
+        if (tz.startsWith("GMT")) null else tz
+    }
     val countdown = uiState.countdownSeconds
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = HomeLightColors.HeroGreen
-        ),
+        colors = CardDefaults.cardColors(containerColor = HomeLightColors.HeroGreen),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // "Sholat berikutnya" label
-            Text(
-                text = "Sholat Berikutnya",
-                style = MaterialTheme.typography.labelLarge,
-                color = HomeLightColors.TextOnHero.copy(alpha = 0.8f),
-                letterSpacing = 1.sp
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Next prayer name
-            Text(
-                text = nextPrayer?.name ?: "--",
-                style = MaterialTheme.typography.headlineLarge,
-                color = HomeLightColors.TextOnHero,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Prayer time
-            Text(
-                text = nextPrayer?.timeString ?: "--:--",
-                style = MaterialTheme.typography.titleMedium,
-                color = HomeLightColors.Gold,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Countdown
+            // Baris atas: cincin progres (kiri) + nama & jam sholat (kanan)
             Row(
-                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CountdownUnit(value = countdown / 3600)
-                Text(
-                    text = ":",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = HomeLightColors.TextOnHero.copy(alpha = 0.6f),
-                    fontWeight = FontWeight.Bold
+                PrayerProgressRing(
+                    progress = if (ongoing != null) 1f else progress,
+                    clockText = uiState.currentTimeStr.ifEmpty { "--:--" },
+                    zoneLabel = zoneLabel
                 )
-                CountdownUnit(value = (countdown % 3600) / 60)
-                Text(
-                    text = ":",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = HomeLightColors.TextOnHero.copy(alpha = 0.6f),
-                    fontWeight = FontWeight.Bold
-                )
-                CountdownUnit(value = countdown % 60)
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    if (ongoing != null) {
+                        Text(
+                            text = "WAKTU SHOLAT",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = HomeLightColors.Gold,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = ongoing.name,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = HomeLightColors.TextOnHero,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = ongoing.timeString,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = HomeLightColors.Gold,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    } else {
+                        Text(
+                            text = "SHOLAT BERIKUTNYA",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = HomeLightColors.TextOnHero.copy(alpha = 0.8f),
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = nextPrayer.name,
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = HomeLightColors.TextOnHero,
+                                fontWeight = FontWeight.Bold
+                            )
+                            // Tag "Besok" saat menuju Subuh hari esok
+                            if (isTomorrowFajr) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(HomeLightColors.GoldLight)
+                                ) {
+                                    Text(
+                                        text = "Besok",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = HomeLightColors.HeroGreen,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = nextPrayer.timeString,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = HomeLightColors.Gold,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Text(
-                text = "menuju adzan",
-                style = MaterialTheme.typography.labelSmall,
-                color = HomeLightColors.TextOnHero.copy(alpha = 0.6f)
-            )
+            if (ongoing != null) {
+                // Status "sedang berlangsung" (v2.3)
+                val minutesLeft = ((ongoing.totalSeconds + ONGOING_WINDOW_MIN * 60 - nowSeconds) / 60).coerceAtLeast(1)
+                Text(
+                    text = "Laksanakan segera · ±$minutesLeft menit lagi",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = HomeLightColors.TextOnHero.copy(alpha = 0.8f)
+                )
+            } else {
+                // Hitung mundur (jam : menit : detik) — lebar penuh, aman di layar kecil
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CountdownUnit(value = countdown / 3600)
+                    ColonSeparator()
+                    CountdownUnit(value = (countdown % 3600) / 60)
+                    ColonSeparator()
+                    CountdownUnit(value = countdown % 60)
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "menuju adzan",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = HomeLightColors.TextOnHero.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 
@@ -406,28 +488,71 @@ private fun NextPrayerHeroCard(
 }
 
 @Composable
-private fun CountdownUnit(value: Int) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = HomeLightColors.HeroGreenDark
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-        ) {
+private fun ColonSeparator() {
+    Text(
+        text = ":",
+        style = MaterialTheme.typography.titleMedium,
+        color = HomeLightColors.TextOnHero.copy(alpha = 0.6f),
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(horizontal = 3.dp)
+    )
+}
+
+/** Cincin progres emas dengan jam digital + zona waktu di tengah. */
+@Composable
+private fun PrayerProgressRing(
+    progress: Float,
+    clockText: String,
+    zoneLabel: String?
+) {
+    Box(contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.size(112.dp)) {
+            val strokeW = 9.dp.toPx()
+            val diameter = size.minDimension - strokeW
+            val topLeft = Offset(
+                (size.width - diameter) / 2f,
+                (size.height - diameter) / 2f
+            )
+            // Lintasan gelap (penuh)
+            drawArc(
+                color = HomeLightColors.HeroGreenDark,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = Size(diameter, diameter),
+                style = Stroke(width = strokeW, cap = StrokeCap.Round)
+            )
+            // Busur emas (progres waktu menuju sholat berikutnya)
+            drawArc(
+                color = HomeLightColors.Gold,
+                startAngle = -90f,
+                sweepAngle = 360f * progress,
+                useCenter = false,
+                topLeft = topLeft,
+                size = Size(diameter, diameter),
+                style = Stroke(width = strokeW, cap = StrokeCap.Round)
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = String.format("%02d", value),
-                style = MaterialTheme.typography.headlineMedium,
+                text = clockText,
+                style = MaterialTheme.typography.headlineSmall,
                 color = HomeLightColors.TextOnHero,
                 fontWeight = FontWeight.Bold
             )
+            if (zoneLabel != null) {
+                Text(
+                    text = zoneLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = HomeLightColors.TextOnHero.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 }
 
-// ==================== PRAYER TIMES GRID (2 COLUMNS) ====================
+// ==================== GRID JADWAL SHOLAT ====================
 @Composable
 private fun PrayerTimesGrid(
     schedule: com.sholatapp.model.PrayerSchedule,
@@ -442,26 +567,51 @@ private fun PrayerTimesGrid(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clickable { onSalatClick() }
     ) {
-        Text(
-            text = "Jadwal Sholat Hari Ini",
-            style = MaterialTheme.typography.titleMedium,
-            color = HomeLightColors.TextPrimary,
-            fontWeight = FontWeight.SemiBold
-        )
+        // Judul + tautan detail (v2.3: affordance yang sebelumnya hilang)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Jadwal Sholat Hari Ini",
+                style = MaterialTheme.typography.titleMedium,
+                color = HomeLightColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onSalatClick() }
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Lihat Detail",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = HomeLightColors.HeroGreen,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = HomeLightColors.HeroGreen,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 2-column grid: 3 rows for 6 times (Subuh+Terbit, Dzuhur+Ashar, Maghrib+Isya)
         val allTimes = schedule.allTimes
 
-        // Row 1: Subuh + Syuruq
+        // Baris 1: Subuh + Terbit
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             PrayerTimeCard(
-                prayer = allTimes[0], // Fajr
+                prayer = allTimes[0],
                 isNext = nextPrayer?.nameKey == allTimes[0].nameKey,
                 isPassed = allTimes[0].totalSeconds <= currentSeconds,
                 isChecked = allTimes[0].nameKey in checkedPrayers,
@@ -469,7 +619,7 @@ private fun PrayerTimesGrid(
                 modifier = Modifier.weight(1f)
             )
             PrayerTimeCard(
-                prayer = allTimes[1], // Sunrise
+                prayer = allTimes[1],
                 isNext = false,
                 isPassed = allTimes[1].totalSeconds <= currentSeconds,
                 isChecked = false,
@@ -479,20 +629,20 @@ private fun PrayerTimesGrid(
         }
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Row 2: Dzuhur + Ashar
+        // Baris 2: Dzuhur + Ashar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             PrayerTimeCard(
-                prayer = allTimes[2], // Dhuhr
+                prayer = allTimes[2],
                 isNext = nextPrayer?.nameKey == allTimes[2].nameKey,
                 isPassed = allTimes[2].totalSeconds <= currentSeconds,
                 isChecked = allTimes[2].nameKey in checkedPrayers,
                 modifier = Modifier.weight(1f)
             )
             PrayerTimeCard(
-                prayer = allTimes[3], // Asr
+                prayer = allTimes[3],
                 isNext = nextPrayer?.nameKey == allTimes[3].nameKey,
                 isPassed = allTimes[3].totalSeconds <= currentSeconds,
                 isChecked = allTimes[3].nameKey in checkedPrayers,
@@ -501,20 +651,20 @@ private fun PrayerTimesGrid(
         }
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Row 3: Maghrib + Isya
+        // Baris 3: Maghrib + Isya
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             PrayerTimeCard(
-                prayer = allTimes[4], // Maghrib
+                prayer = allTimes[4],
                 isNext = nextPrayer?.nameKey == allTimes[4].nameKey,
                 isPassed = allTimes[4].totalSeconds <= currentSeconds,
                 isChecked = allTimes[4].nameKey in checkedPrayers,
                 modifier = Modifier.weight(1f)
             )
             PrayerTimeCard(
-                prayer = allTimes[5], // Isha
+                prayer = allTimes[5],
                 isNext = nextPrayer?.nameKey == allTimes[5].nameKey,
                 isPassed = allTimes[5].totalSeconds <= currentSeconds,
                 isChecked = allTimes[5].nameKey in checkedPrayers,
@@ -563,9 +713,7 @@ private fun PrayerTimeCard(
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isSunrise) {
                     Icon(
                         Icons.Default.WbSunny,
@@ -595,6 +743,23 @@ private fun PrayerTimeCard(
                     color = nameColor,
                     fontWeight = if (isNext) FontWeight.Bold else FontWeight.Medium
                 )
+                // Pil "Berikutnya" (v2.3) — memakai palet lama, tidak ada warna baru
+                if (isNext && !isSunrise && !isChecked) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(HomeLightColors.GoldLight)
+                    ) {
+                        Text(
+                            text = "Berikutnya",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = HomeLightColors.HeroGreen,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -614,12 +779,11 @@ private fun PrayerTimeCard(
     }
 }
 
-// ==================== QUICK ACTIONS ====================
+// ==================== TINDAKAN CEPAT ====================
 @Composable
 private fun QuickActionsSection(
     onKiblatClick: () -> Unit,
-    onTasbihClick: () -> Unit,
-    onPuasaClick: () -> Unit,
+    onQuranClick: () -> Unit,
     onKalenderClick: () -> Unit,
     onLainnyaClick: () -> Unit
 ) {
@@ -636,26 +800,22 @@ private fun QuickActionsSection(
         )
         Spacer(modifier = Modifier.height(10.dp))
 
+        // v2.3: Zikir & Puasa keluar (keduanya punya tab sendiri di nav bawah),
+        // Al-Qur'an masuk sebagai aksi cepat utama
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-        QuickActionItem(
+            QuickActionItem(
                 icon = Icons.Default.Explore,
                 label = "Kiblat",
                 onClick = onKiblatClick,
                 modifier = Modifier.weight(1f)
             )
             QuickActionItem(
-                icon = Icons.Default.TouchApp,
-                label = "Tasbih",
-                onClick = onTasbihClick,
-                modifier = Modifier.weight(1f)
-            )
-            QuickActionItem(
-                icon = Icons.Default.Brightness3,
-                label = "Puasa",
-                onClick = onPuasaClick,
+                icon = Icons.Default.MenuBook,
+                label = "Al-Qur'an",
+                onClick = onQuranClick,
                 modifier = Modifier.weight(1f)
             )
             QuickActionItem(
@@ -667,7 +827,7 @@ private fun QuickActionsSection(
         }
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Menu Lainnya: Mushaf, Doa, Mutabaah, Tilawah, Asmaul Husna
+        // Menu Lainnya: Doa, Mutabaah, Tilawah, Asmaul Husna
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -705,7 +865,7 @@ private fun QuickActionsSection(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "Mushaf, Doa, Mutabaah, Tilawah, Asmaul Husna",
+                        text = "Doa, Mutabaah, Tilawah, Asmaul Husna",
                         style = MaterialTheme.typography.labelSmall,
                         color = HomeLightColors.TextSecondary,
                         maxLines = 1
@@ -762,13 +922,14 @@ private fun QuickActionItem(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
                 color = HomeLightColors.TextPrimary,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                maxLines = 1
             )
         }
     }
 }
 
-// ==================== PRAYER TRACKING LIST ====================
+// ==================== PELACAKAN SHOLAT ====================
 @Composable
 private fun PrayerTrackingSection(
     schedule: com.sholatapp.model.PrayerSchedule,
@@ -785,7 +946,6 @@ private fun PrayerTrackingSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        // Section header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -806,7 +966,6 @@ private fun PrayerTrackingSection(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Progress bar
         val progress = if (prayers.isNotEmpty()) checkedCount.toFloat() / prayers.size else 0f
         LinearProgressIndicator(
             progress = { progress },
@@ -820,7 +979,6 @@ private fun PrayerTrackingSection(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Prayer list
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = HomeLightColors.Surface),
@@ -829,7 +987,6 @@ private fun PrayerTrackingSection(
         ) {
             prayers.forEachIndexed { index, prayer ->
                 val isChecked = prayer.nameKey in checkedPrayers
-                val isPassed = prayer.totalSeconds <= currentSeconds && !isChecked
 
                 PrayerTrackingItem(
                     prayer = prayer,
@@ -859,7 +1016,6 @@ private fun PrayerTrackingItem(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Checkbox
             Box(
                 modifier = Modifier
                     .size(24.dp)
@@ -888,7 +1044,6 @@ private fun PrayerTrackingItem(
 
             Spacer(modifier = Modifier.width(14.dp))
 
-            // Prayer name
             Text(
                 text = prayer.name,
                 style = MaterialTheme.typography.bodyLarge,
@@ -897,7 +1052,6 @@ private fun PrayerTrackingItem(
                 modifier = Modifier.weight(1f)
             )
 
-            // Time
             Text(
                 text = prayer.timeString,
                 style = MaterialTheme.typography.bodyMedium,
@@ -913,4 +1067,60 @@ private fun PrayerTrackingItem(
             )
         }
     }
+}
+
+// ==================== MAHFUDZOT (PENUTUP) ====================
+/**
+ * Kartu Mahfudzot di dasar Beranda (v2.3).
+ * - Tanpa sumber/periwayat (permintaan user)
+ * - Tinggi kartu mengikuti panjang teks (wrap content) — tidak ada pemotongan
+ * - Gaya emas lama dipertahankan persis
+ */
+@Composable
+private fun MahfudzotCard(mahfudzot: com.sholatapp.data.Mahfudzot) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .wrapContentHeight(),
+        colors = CardDefaults.cardColors(containerColor = HomeLightColors.GoldLight),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            // Tanda kutip dekoratif
+            Text(
+                text = "\u201D",
+                style = MaterialTheme.typography.headlineLarge,
+                color = HomeLightColors.TextGold,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.height(24.dp)
+            )
+            // Teks Arab — rata kanan, tanpa batas baris agar tidak terpotong
+            Text(
+                text = mahfudzot.arabic,
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 20.sp,
+                lineHeight = 34.sp,
+                color = HomeLightColors.TextGold,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Right,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            // Arti
+            Text(
+                text = mahfudzot.meaning,
+                style = MaterialTheme.typography.bodySmall,
+                color = HomeLightColors.TextSecondary,
+                lineHeight = 18.sp
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
 }

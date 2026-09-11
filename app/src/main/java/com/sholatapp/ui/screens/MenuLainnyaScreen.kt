@@ -28,9 +28,11 @@ import androidx.compose.ui.unit.dp
 import com.sholatapp.ui.theme.DarkColors
 
 /**
- * Menu Lainnya — pintu akses untuk Mushaf, Doa Harian, Mutabaah,
- * Tilawah, dan Asmaul Husna. Sebelumnya 4 fitur ini tidak dapat
- * diakses dari mana pun di aplikasi (layar orphan).
+ * Menu Lainnya — pintu akses untuk Doa Harian, Mutabaah, Tilawah,
+ * dan Asmaul Husna.
+ *
+ * Sejak v2.3 Mushaf Al-Qur'an pindah total ke halaman Zikir (tab Zikir)
+ * dan tindakan cepat Beranda — lihat QuranScreen.
  */
 @Composable
 fun MenuLainnyaScreen(onBack: () -> Unit) {
@@ -52,7 +54,6 @@ fun MenuLainnyaScreen(onBack: () -> Unit) {
         label = "menuLainnyaContent"
     ) { menu ->
         when (menu) {
-            "mushaf" -> MushafScreenWithBack(onBack = { selectedMenu = null })
             "doa" -> DoaScreenWithBack(onBack = { selectedMenu = null })
             "mutabaah" -> IbadahScreenWithBack(onBack = { selectedMenu = null })
             "tilawah" -> TilawahScreenWithBack(onBack = { selectedMenu = null })
@@ -66,13 +67,6 @@ fun MenuLainnyaScreen(onBack: () -> Unit) {
 }
 
 /** Pembungkus dengan tombol kembali ke menu. */
-@Composable
-private fun MushafScreenWithBack(onBack: () -> Unit) {
-    Box {
-        MushafScreen()
-        BackFab(onBack)
-    }
-}
 
 @Composable
 private fun DoaScreenWithBack(onBack: () -> Unit) {
@@ -161,13 +155,6 @@ private fun MenuLainnyaHome(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            MenuLainnyaItem(
-                icon = Icons.Default.MenuBook,
-                title = "Mushaf Al-Qur'an",
-                subtitle = "Baca Al-Qur'an lengkap dengan penjelasan",
-                tint = DarkColors.Gold,
-                onClick = { onSelect("mushaf") }
-            )
             MenuLainnyaItem(
                 icon = Icons.Default.Spa,
                 title = "Doa Harian",
