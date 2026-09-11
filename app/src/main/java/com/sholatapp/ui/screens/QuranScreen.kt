@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sholatapp.data.QuranRepository
+import com.sholatapp.data.TilawahData
 import com.sholatapp.ui.theme.DarkColors
 
 /**
@@ -45,7 +46,7 @@ import com.sholatapp.ui.theme.DarkColors
  *   2. Reader  : tiap ayat tampil 3 unsur — Arab, Arab-Latin, Arti
  */
 @Composable
-fun QuranScreen(onBack: () -> Unit) {
+fun QuranScreen(onBack: () -> Unit, onMushafClick: () -> Unit = {}) {
     var selectedSurah by remember { mutableStateOf<QuranRepository.Surah?>(null) }
 
     BackHandler(enabled = selectedSurah != null) {
@@ -65,7 +66,8 @@ fun QuranScreen(onBack: () -> Unit) {
         if (surah == null) {
             QuranBrowser(
                 onOpenSurah = { selectedSurah = it },
-                onBack = onBack
+                onBack = onBack,
+                onMushafClick = onMushafClick
             )
         } else {
             QuranReader(
@@ -80,11 +82,15 @@ fun QuranScreen(onBack: () -> Unit) {
 @Composable
 private fun QuranBrowser(
     onOpenSurah: (QuranRepository.Surah) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onMushafClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val allSurahs = remember { QuranRepository.getSurahIndex(context) }
     var query by remember { mutableStateOf("") }
+
+    // Bacaan Terarah (v2.6) — pintu masuk satu arah ke halaman Mushaf
+    val portion = remember { TilawahData.getTodayPortion(context) }
 
     val mushafPrefs = remember {
         context.getSharedPreferences("mushaf_prefs", android.content.Context.MODE_PRIVATE)
@@ -152,6 +158,60 @@ private fun QuranBrowser(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Banner Bacaan Hari Ini (v2.6) — menuju halaman Mushaf (satu arah)
+            if (portion.isNotEmpty()) {
+                item(key = "mushafBanner") {
+                    val first = portion.first()
+                    val last = portion.last()
+                    val totalAyat = portion.sumOf { it.ayahEnd - it.ayahStart + 1 }
+                    val rangeText = if (portion.size == 1)
+                        "QS. ${first.surahName} · Ayat ${first.ayahStart} – ${first.ayahEnd}"
+                    else
+                        "QS. ${first.surahName} ${first.ayahStart} – ${last.surahName} ${last.ayahEnd}"
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onMushafClick),
+                        colors = CardDefaults.cardColors(containerColor = DarkColors.PrimaryDark),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "BACAAN HARI INI",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = DarkColors.GoldLight,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = rangeText,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = DarkColors.TextOnPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "$totalAyat ayat · buka halaman Mushaf",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = DarkColors.HeaderSubtitle
+                                )
+                            }
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = "Buka Mushaf",
+                                tint = DarkColors.GoldLight,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             // Banner terakhir dibaca
             if (lastRead != null) {
                 item(key = "lastRead") {

@@ -135,9 +135,15 @@ fun SettingsScreen(
             SettingInfoRow(title = "Sudut Isya", value = "18.0°")
             SettingInfoRow(title = "Metode Asar", value = "Syafi'i (bayangan = 1x)")
 
-            // Target Khatam Section
-            SectionHeader(title = "Target Khatam Al-Qur'an")
+            // Bacaan Terarah Section (v2.6 — sebelumnya "Target Khatam")
+            SectionHeader(title = "Bacaan Terarah (Khatam)")
             KhatamTargetSetting(context = context)
+            SettingActionRow(
+                title = "Mulai Ulang Rencana",
+                subtitle = "Kembali ke awal (QS. Al-Fatihah 1) dan hapus riwayat khatam",
+                icon = Icons.Default.RestartAlt,
+                onClick = { context?.let { TilawahData.resetProgress(it) } }
+            )
 
             // Data Section
             SectionHeader(title = "Data")
@@ -150,7 +156,7 @@ fun SettingsScreen(
 
             // About Section
             SectionHeader(title = "Tentang")
-            SettingInfoRow(title = "Versi", value = "2.5.0")
+            SettingInfoRow(title = "Versi", value = "2.6.0")
             SettingInfoRow(title = "Perhitungan", value = "Berdasarkan posisi matahari astronomis")
             SettingInfoRow(title = "Fitur", value = "Sholat, Ibadah, Tilawah, Doa, Mushaf, Asmaul Husna, DND Fokus")
 
@@ -364,11 +370,14 @@ private fun KhatamTargetSetting(context: Context?) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Save button
+        // Save button — simpan target HARI dan hitung ulang ayat/hari agar
+        // jadwal halaman Mushaf ikut berubah (fix integrasi v2.6)
         Button(
             onClick = {
+                val ctx = context ?: return@Button
                 prefs?.edit()?.putInt("target_days", targetDays)?.apply()
-                TilawahData.setTargetDays(context ?: return@Button, targetDays)
+                TilawahData.setTargetDays(ctx, targetDays)
+                TilawahData.setVersesPerDay(ctx, ceil(6236.0 / targetDays).toInt())
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = DarkColors.Primary),

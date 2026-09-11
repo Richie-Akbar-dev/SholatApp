@@ -63,6 +63,7 @@ sealed class AppScreen {
     data object PusatNotifikasi : AppScreen()
     data object AzanPicker : AppScreen()
     data object AlQuran : AppScreen()
+    data object Mushaf : AppScreen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -215,6 +216,10 @@ class MainActivity : ComponentActivity() {
                                                 onComplete = { overlayScreen = null }
                                             )
                                             is AppScreen.AlQuran -> QuranScreen(
+                                                onBack = { overlayScreen = null },
+                                                onMushafClick = { overlayScreen = AppScreen.Mushaf }
+                                            )
+                                            is AppScreen.Mushaf -> MushafScreen(
                                                 onBack = { overlayScreen = null }
                                             )
                                             null -> { /* tidak ada overlay */ }

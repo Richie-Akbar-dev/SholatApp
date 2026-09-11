@@ -1,5 +1,28 @@
 # Changelog — SholatApp
 
+## v2.6.0 (2026-09-12)
+
+Fokus: halaman baru **Mushaf — Bacaan Terarah** sesuai arahan user: hanya teks Arab mengalir menerus (gaya mushaf asli), setelan khatam di Pengaturan, tanpa tautan keluar. Satu database Al-Qur'an, dua output (pembaca lengkap + bacaan jadwalan sistem).
+
+### ✨ Fitur Baru
+
+1. **Halaman Mushaf** — menampilkan porsi bacaan hari ini yang ditentukan sistem (mesin khatam, ayat/hari dari target): kartu hero (rentang surah-ayat, jumlah ayat, estimasi menit baca, ring emas % khatam, chip streak "hari beruntun", tombol Mulai Membaca) + lembar bacaan + tombol **Tandai Bacaan Selesai** (berubah hijau "Selesai · Sampai Besok", streak & progres ikut naik).
+2. **Lembar Arab menerus** — teks Arab mengalir tanpa kartu terpisah; nomor ayat ditandai ornamen emas ﴿n﴾ (angka Arab-Indic) di dalam aliran; arah RTL penuh.
+3. **Aturan basmalah** — basmalah hanya muncul bila bacaan dimulai di ayat 1 sebuah surah; **tidak untuk At-Taubah** (surah tanpa basmalah — hukum tidak dibacakan sebelum membacanya) dan Al-Fatihah (basmalah = ayat 1-nya sendiri).
+4. **Banner "Bacaan Hari Ini" di halaman Al-Qur'an** — pintu masuk **satu arah** (Al-Qur'an → Mushaf); halaman Mushaf sendiri tidak menautkan ke halaman surat lengkap, sesuai keputusan user.
+5. **State khatam tercapai** — saat rencana selesai, halaman menampilkan kartu "Alhamdulillah, Khatam Tercapai" + arahan mulai ulang.
+
+### 🎨 Pengaturan (Bacaan Terarah)
+
+1. Section "Target Khatam Al-Qur'an" diperluas menjadi **"Bacaan Terarah (Khatam)"** + tombol **Mulai Ulang Rencana** (kembali ke awal, hapus riwayat).
+2. **Fix integrasi**: menyimpan target kini juga menghitung ulang **ayat/hari** (sebelumnya hanya `target_days` — jadwal harian tidak pernah berubah). Target kini benar-benar menggerakkan porsi harian halaman Mushaf.
+
+### 🔧 Lainnya
+
+- Database ayat = aset bersama `assets/quran` (114 surah) via `QuranRepository` — satu sumber untuk pembaca Al-Qur'an dan Mushaf.
+- Wiring baru: `AppScreen.Mushaf` overlay di MainActivity; `QuranScreen(onMushafClick=...)`.
+- versionCode 7, versionName 2.6.0.
+
 ## v2.5.0 (2026-09-12)
 
 Fokus: rombak halaman **Zikir** menurut mockup & 5 keputusan user — chip kategori diperbaiki, counter lebih manusiawi (undo tahan 3 detik), pop up fokus menggantikan hero tasbih, konten dzikir diperluas dengan item autentik.
