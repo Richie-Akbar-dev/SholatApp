@@ -115,9 +115,10 @@ class MainActivity : ComponentActivity() {
                         var selectedTab by remember { mutableStateOf(AppTab.BERANDA) }
                         var overlayScreen by remember { mutableStateOf<AppScreen?>(null) }
                         val uiState by viewModel.uiState.collectAsState()
-                        val userName = remember {
-                            appPrefs.getString("user_name", "") ?: ""
-                        }
+                        // v2.8: nama kini state hidup — edit di Pengaturan langsung update salam Beranda
+                        var userName by remember { mutableStateOf(appPrefs.getString("user_name", "") ?: "") }
+                        // v2.8: counter versi azan — naik saat kembali dari pemilih azan agar kartu refresh
+                        var azanVersion by remember { mutableIntStateOf(0) }
 
                         // Tombol back sistem: tutup overlay dulu, jangan keluar aplikasi
                         BackHandler(enabled = overlayScreen != null) {
@@ -176,7 +177,17 @@ class MainActivity : ComponentActivity() {
                                                 dp.edit().clear().apply()
                                                 android.widget.Toast.makeText(this@MainActivity, "Progress dzikir direset", android.widget.Toast.LENGTH_SHORT).show()
                                             },
-                                            onChangeAzan = { overlayScreen = AppScreen.AzanPicker }
+                                            onChangeAzan = { overlayScreen = AppScreen.AzanPicker },
+                                            userName = userName,
+                                            onNameChange = { name ->
+                                                appPrefs.edit().putString("user_name", name).apply()
+                                                userName = name
+                                            },
+                                            onPusatNotifikasiClick = { overlayScreen = AppScreen.PusatNotifikasi },
+                                            onRefreshLocation = {
+                                                viewModel.detectLocation()
+                                            },
+                                            azanVersion = azanVersion
                                         )
                                     }
                                 }
@@ -214,7 +225,10 @@ class MainActivity : ComponentActivity() {
                                             )
                                             is AppScreen.AzanPicker -> AzanPickerScreen(
                                                 azanPlayer = azanPlayer,
-                                                onComplete = { overlayScreen = null }
+                                                onComplete = {
+                                                    azanVersion++ // refresh kartu Suara Azan di Pengaturan
+                                                    overlayScreen = null
+                                                }
                                             )
                                             is AppScreen.AlQuran -> QuranScreen(
                                                 onBack = { overlayScreen = null },

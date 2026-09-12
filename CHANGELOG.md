@@ -1,5 +1,38 @@
 # Changelog — SholatApp
 
+## v2.8.0 (2026-09-12)
+
+Fokus: rombak halaman **Pengaturan** menurut mockup & keputusan user — kartu profil + ubah nama, kartu Status Perizinan Android, perbarui lokasi, grid metode KEMENAG, khatam dengan progress bar, konfirmasi reset, riwayat versi, dan footer. Halaman terakhir dengan pola UI lama kini mengikuti bahasa visual v2.4–v2.7.
+
+### 🐞 Perbaikan
+
+1. **Suara Azan tidak refresh** — label "Aktif: …" tetap menampilkan azan lama setelah ganti azan (nilai dibaca sekali, halaman tidak keluar komposisi saat pemilih azan terbuka). Kini di-refresh via counter `azanVersion` yang naik setiap kembali dari pemilih azan.
+2. **Progress khatam tidak update** — setelah "Mulai Ulang Rencana" / "Simpan Target", angka progress tetap lama. Kini dibaca ulang lewat key `khatamRefresh` setiap aksi.
+3. **Aksi destruktif tanpa konfirmasi** — "Mulai Ulang Rencana" dan "Reset Progress Dzikir" kini memunculkan dialog konfirmasi sebelum eksekusi (keduanya diberi warna merah/tombol Reset merah sesuai keputusan user).
+4. **Simpan target tanpa feedback** — kini memunculkan Toast "Target khatam disimpan".
+5. **Format koordinat** — kini memakai `Locale.US` (titik desimal konsisten di semua perangkat).
+6. **Izin kritis tak terlihat** — izin notifikasi & alarm tepat sebelumnya hanya diminta sekali saat aplikasi dibuka; jika ditolak, semua pengingat mati diam-diam. Kini ada kartu **Status Perizinan Android**.
+
+### ✨ Fitur Baru / Perubahan
+
+1. **Header baru** — hijau tua sudut membulat + judul putih + subtitle, menggantikan header pola lama.
+2. **Kartu Profil** — avatar inisial hijau, nama user, sub-teks lokasi · metode KEMENAG RI, ikon pensil emas. Ketuk → dialog **Ubah Nama**; nama langsung ikut berubah di salam Beranda (state hidup di MainActivity).
+3. **Kartu Status Perizinan Android** — tiga chip status: izin notifikasi, alarm tepat, izin DND. Chip hijau = aman; chip merah bisa diketuk untuk langsung membuka pengaturan sistem terkait. Status otomatis segar saat kembali ke aplikasi (observer ON_RESUME).
+4. **Perbarui Lokasi** — tombol kecil pada baris lokasi memicu deteksi ulang GPS (`detectLocation()`), alamat langsung memperbarui.
+5. **Ikon leading semua baris** — kotak hijau muda 40dp gaya Setelan Google (lonceng, alarm, DND, pin, bola dunia, kalkulator, perisai, dll).
+6. **Metode Perhitungan grid 2×2** — OTORITAS KEMENAG RI · Sudut Fajr 20° · Sudut Isya 18° · Mazhab Ashar Syafi'i.
+7. **Kartu Target Khatam baru** — badge emas "x% Selesai", progress bar emas, "n dari 6.236 ayat", preset 30 hari/6 bulan/1 tahun (chip aktif + tanda centang), kolom custom, tombol gelap "Simpan Target" berikon.
+8. **Tautan Pusat Notifikasi** — baris baru di section Alarm (sebelumnya hanya terjangkau dari lonceng Beranda).
+9. **Section Tentang Aplikasi** — Versi (chip v2.8.0), **100% Offline** (data tidak keluar perangkat), Sumber Waktu KEMENAG RI, dan **Riwayat Versi** (pop-up changelog v2.1–v2.8).
+10. **Footer** — "SholatApp v2.8.0 · Dibuat dengan cinta untuk umat".
+
+### 🔧 Teknis
+
+- `SettingsScreen` ditulis ulang penuh (~1190 baris) — komponen reusable: `LeadingIconBox`, `PermissionStatusCard/Chip`, `MethodCard/Cell`, `KhatamTargetCard`, varian baris info/aksi/bahaya.
+- `MainActivity`: `userName` menjadi state hidup (+`onNameChange`), counter `azanVersion`, wiring `onPusatNotifikasiClick` & `onRefreshLocation`.
+- Helper baru: `exactAlarmAllowed()`, `openAppNotificationSettings()`, `openExactAlarmSettings()`, `rememberResumeTick()` (refresh status izin saat kembali ke aplikasi).
+- versionCode 9, versionName 2.8.0.
+
 ## v2.7.0 (2026-09-12)
 
 Fokus: rombak halaman **Puasa** menurut mockup & keputusan user — tema terang konsisten, countdown hidup, kalender menjadi mesin pencatatan (fungsi "Catat" digeser), jadwal sunnah konkret + pengingat notifikasi, statistik bermakna, Niat & Doa pop up.
