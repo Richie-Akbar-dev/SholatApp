@@ -1,5 +1,23 @@
 # Changelog — SholatApp
 
+## v2.10.0 (2026-09-12)
+
+Fokus: mewujudkan keinginan user atas **dua halaman Al-Qur'an yang berbeda** — halaman **Al-Qur'an** (114 surah lengkap, tampilan baru dari mockup) dan halaman **Mushaf Bacaan Terarah** (bacaan ditentukan sistem, teks Arab mengalir satu blok gaya mushaf asli, dari mockup + referensi user) — plus restrukturisasi navigasi: pintu **"Lainnya" dihapus total** sesuai keputusan user.
+
+### ✨ Baru / Rombak
+
+1. **Halaman Al-Qur'an tampilan baru (A)** — header hijau rounded, pil pencarian, kartu **"Lanjutkan Membaca"** berbingkai emas, banner Bacaan Hari Ini (pintu ke Mushaf), dan daftar 114 surah dengan **ornamen bintang-8 emas** + nama Arab di kanan. Halaman baca surah: kartu bismillah **beserta artinya** (keputusan user), pil "Ayat N" cincin emas, 3 unsur per ayat (Arab, Arab-Latin, Arti Kemenag), bar bawah **Sebelumnya/Berikutnya** untuk pindah surah.
+2. **Halaman Mushaf tampilan baru (B)** — hero **"BACAAN HARI INI"**: nama surah + chip "Surah N", rentang ayat, jumlah ayat, estimasi menit baca, ring emas % khatam, chip 🔥 hari beruntun, tombol Mulai Membaca. Lembar bacaan tetap **teks Arab mengalir satu blok gaya mushaf asli — khusus halaman ini** (halaman Al-Qur'an tetap kartu per-ayat), medali emas nomor ayat di dalam aliran, footer atribusi "Teks & Terjemahan Kemenag RI · 100% Offline", tombol bawah "Tandai Bacaan Selesai" berubah hijau "Selesai · Sampai Besok".
+3. **Navigasi: pintu "Lainnya" dihapus** — tile "Lainnya" di Beranda DIHAPUS; slotnya diganti tile **Mutabaah** (checklist ibadah harian & statistik istiqamah) yang kini jadi overlay berdiri sendiri dengan tombol kembali.
+4. **Doa pindah ke halaman Zikir** — kini menjadi **kategori chip "Doa"** di baris kategori Zikir: Pagi · Petang · Setelah Sholat · Umum · **Doa** · **Asmaul Husna**. Pencarian, favorit, dan semua isi doa tetap utuh.
+5. **Asmaul Husna pindah ke halaman Zikir** — pola sama dengan Doa (keputusan user).
+6. **Halaman Tilawah lama DIHAPUS** — tugasnya sudah diambil alih penuh halaman Al-Qur'an lengkap; mesin khatam tetap hidup (dipakai Mushaf & Pengaturan → Bacaan Terarah). Halaman MenuLainnya ikut dihapus karena keempat isinya sudah pindah.
+
+### 🐞 Perbaikan
+
+7. **Bug chip kategori Doa tak terjangkau (audit)** — 9 chip ("Semua" + 8 kategori) dulu dalam Row statis tanpa scroll; kini baris scroll penuh (bug kelas sama dengan Zikir yang diperbaiki di v2.5).
+8. **Warna teks input pencarian Doa** — dulu PrimaryContainer (kontras aneh); kini warna teks normal.
+
 ## v2.9.0 (2026-09-12)
 
 Fokus: audit lintas aplikasi menemukan 9 halaman sekunder yang belum tersentuh update. Rilis ini memperbaiki **bug kritis kalkulator Hijriah (meleset ±26 tahun)** yang mengena ke Beranda, Kalender, dan Puasa, lalu merombak halaman **Kiblat** menurut mockup & keputusan user (badge dial diadopsi, kontainer ikon pola aplikasi).

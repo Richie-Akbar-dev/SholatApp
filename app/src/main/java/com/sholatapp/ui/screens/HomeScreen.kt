@@ -73,7 +73,7 @@ fun HomeScreen(
     onNotificationClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onSalatClick: () -> Unit,
-    onLainnyaClick: () -> Unit
+    onMutabaahClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val mahfudzot = remember { MahfudzotData.getTodayMahfudzot() }
@@ -134,12 +134,12 @@ fun HomeScreen(
                     )
                 }
 
-                // 6. Tindakan cepat: Kiblat · Al-Qur'an · Kalender
+                // 6. Tindakan cepat: Kiblat · Al-Qur'an · Kalender · Mutabaah
                 QuickActionsSection(
                     onKiblatClick = onKiblatClick,
                     onQuranClick = onQuranClick,
                     onKalenderClick = onKalenderClick,
-                    onLainnyaClick = onLainnyaClick
+                    onMutabaahClick = onMutabaahClick
                 )
 
                 // 7. Pelacakan sholat (checklist harian)
@@ -785,7 +785,7 @@ private fun QuickActionsSection(
     onKiblatClick: () -> Unit,
     onQuranClick: () -> Unit,
     onKalenderClick: () -> Unit,
-    onLainnyaClick: () -> Unit
+    onMutabaahClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -827,11 +827,13 @@ private fun QuickActionsSection(
         }
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Menu Lainnya: Doa, Mutabaah, Tilawah, Asmaul Husna
+        // v2.10: pintu "Lainnya" DIHAPUS (keputusan user). Slotnya dinaiki
+        // Mutabaah; Doa & Asmaul Husna pindah jadi kategori halaman Zikir;
+        // halaman Tilawah lama dihapus (sudah diwakili Al-Qur'an lengkap).
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onLainnyaClick),
+                .clickable(onClick = onMutabaahClick),
             colors = CardDefaults.cardColors(containerColor = HomeLightColors.Surface),
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(0.dp)
@@ -850,8 +852,8 @@ private fun QuickActionsSection(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.Apps,
-                        contentDescription = "Lainnya",
+                        Icons.Default.FactCheck,
+                        contentDescription = "Mutabaah",
                         tint = HomeLightColors.HeroGreen,
                         modifier = Modifier.size(22.dp)
                     )
@@ -859,13 +861,13 @@ private fun QuickActionsSection(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Lainnya",
+                        text = "Mutabaah",
                         style = MaterialTheme.typography.labelMedium,
                         color = HomeLightColors.TextPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "Doa, Mutabaah, Tilawah, Asmaul Husna",
+                        text = "Checklist ibadah harian & statistik istiqamah",
                         style = MaterialTheme.typography.labelSmall,
                         color = HomeLightColors.TextSecondary,
                         maxLines = 1

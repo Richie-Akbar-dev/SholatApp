@@ -33,7 +33,7 @@ enum class IbadahTab(val label: String, val icon: ImageVector) {
 }
 
 @Composable
-fun IbadahScreen() {
+fun IbadahScreen(onBack: (() -> Unit)? = null) {
     var selectedTab by remember { mutableStateOf(IbadahTab.MUTABAAH) }
 
     Column(
@@ -48,18 +48,33 @@ fun IbadahScreen() {
                 .background(DarkColors.PrimaryDark)
                 .padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
-            Text(
-                text = "Ibadah Harian",
-                style = MaterialTheme.typography.headlineSmall,
-                color = DarkColors.Gold,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Pantau dan tingkatkan kualitas ibadah harianmu",
-                style = MaterialTheme.typography.bodySmall,
-                color = DarkColors.HeaderSubtitle
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // v2.10: tombol kembali — halaman kini overlay Beranda
+                // (menggantikan pintu "Lainnya" yang dihapus)
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Kembali",
+                            tint = DarkColors.Gold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Column {
+                    Text(
+                        text = "Ibadah Harian",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = DarkColors.Gold,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Pantau dan tingkatkan kualitas ibadah harianmu",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = DarkColors.HeaderSubtitle
+                    )
+                }
+            }
         }
 
         // Sub-tabs

@@ -20,7 +20,12 @@ enum class DzikirCategory(val displayName: String, val shortLabel: String) {
     PAGI("Dzikir Pagi", "Pagi"),
     PETANG("Dzikir Petang", "Petang"),
     SETELAH_SHOLAT("Setelah Sholat", "Setelah Sholat"),
-    UMUM("Dzikir Umum", "Umum")
+    UMUM("Dzikir Umum", "Umum"),
+    // v2.10: kategori pintu — TIDAK memiliki item DzikirItem. Saat chip ini
+    // aktif, badan halaman Zikir diambil alih DoaContent()/AsmaulHusnaContent()
+    // (pindahan dari halaman "Lainnya" yang dihapus, keputusan user v2.10).
+    DOA("Doa Harian", "Doa"),
+    ASMAUL_HUSNA("Asmaul Husna", "Asmaul Husna")
 }
 
 /**

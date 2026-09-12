@@ -8,24 +8,31 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -35,26 +42,55 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sholatapp.data.QuranRepository
 import com.sholatapp.data.TilawahData
-import com.sholatapp.ui.theme.DarkColors
 
 /**
- * Al-Qur'an lengkap (v2.3) — 114 surah / 6236 ayat, 100% offline.
+ * Palet terang halaman Al-Qur'an (v2.10) — bahasa visual baru v2.4–v2.9:
+ * latar hangat, header hijau tua rounded, kartu putih, aksen emas.
+ */
+private object QuranColors {
+    val Background = Color(0xFFF5F5F0)
+    val Surface = Color(0xFFFFFFFF)
+    val PrimaryDark = Color(0xFF143A2E)
+    val HeaderSubtitle = Color(0xFFA8C3B4)
+    val Gold = Color(0xFFA97C0E)
+    val IconContainer = Color(0xFFE8F0EA)
+    val TextPrimary = Color(0xFF1F2E28)
+    val TextSecondary = Color(0xFF5B665B)
+    val TextTertiary = Color(0xFF8A938A)
+    val Divider = Color(0xFFE4E8E0)
+}
+
+/**
+ * Halaman Al-Qur'an — v2.10 (rombak visual penuh sesuai mockup user).
  *
- * Dua tampilan dalam satu layar (dibuka dari halaman Zikir maupun
- * tindakan cepat Beranda):
- *   1. Browser : daftar 114 surah + pencarian + banner terakhir dibaca
- *   2. Reader  : tiap ayat tampil 3 unsur — Arab, Arab-Latin, Arti
+ * 114 surah / 6236 ayat, 100% offline (aset terbundel). Dua tampilan:
+ *   1. Browser — header hijau rounded, pil pencarian, kartu "Lanjutkan
+ *      Membaca" berbingkai emas, banner Bacaan Hari Ini (pintu ke Mushaf),
+ *      daftar surah dengan ornamen bintang-8 emas + nama Arab di kanan.
+ *   2. Reader — kartu bismillah berarti, kartu per-ayat 3 unsur
+ *      (Arab, Arab-Latin, Arti) dengan pil "Ayat N" cincin emas,
+ *      bar bawah pindah surah Sebelumnya/Berikutnya.
+ *
+ * Perubahan v2.10 vs v2.3:
+ *  - Palet terang baru (sebelumnya gelap) + ornamen bintang-8.
+ *  - Banner terakhir dibaca -> kartu "Lanjutkan Membaca" beraksen emas.
+ *  - Bismillah menjadi kartu tersendiri beserta artinya (keputusan user),
+ *    kecuali Al-Fatihah (bismillah = ayat 1) dan At-Taubah (tanpa basmalah).
+ *  - Tanpa ikon audio/bookmark per ayat (tidak diimplementasi di v2.10).
  */
 @Composable
 fun QuranScreen(onBack: () -> Unit, onMushafClick: () -> Unit = {}) {
-    var selectedSurah by remember { mutableStateOf<QuranRepository.Surah?>(null) }
+    val context = LocalContext.current
+    val allSurahs = remember { QuranRepository.getSurahIndex(context) }
+    var selectedNumber by remember { mutableStateOf<Int?>(null) }
+    val selectedMeta = selectedNumber?.let { n -> allSurahs.firstOrNull { it.number == n } }
 
-    BackHandler(enabled = selectedSurah != null) {
-        selectedSurah = null
+    BackHandler(enabled = selectedMeta != null) {
+        selectedNumber = null
     }
 
     AnimatedContent(
-        targetState = selectedSurah,
+        targetState = selectedMeta,
         transitionSpec = {
             (slideInHorizontally(animationSpec = tween(260)) { it } +
                     fadeIn(animationSpec = tween(200))) togetherWith
@@ -65,14 +101,22 @@ fun QuranScreen(onBack: () -> Unit, onMushafClick: () -> Unit = {}) {
     ) { surah ->
         if (surah == null) {
             QuranBrowser(
-                onOpenSurah = { selectedSurah = it },
+                allSurahs = allSurahs,
+                onOpenSurah = { selectedNumber = it.number },
                 onBack = onBack,
                 onMushafClick = onMushafClick
             )
         } else {
+            val currentIndex = allSurahs.indexOfFirst { it.number == surah.number }
             QuranReader(
                 surahMeta = surah,
-                onBack = { selectedSurah = null }
+                onBack = { selectedNumber = null },
+                onPrev = {
+                    allSurahs.getOrNull(currentIndex - 1)?.let { selectedNumber = it.number }
+                },
+                onNext = {
+                    allSurahs.getOrNull(currentIndex + 1)?.let { selectedNumber = it.number }
+                }
             )
         }
     }
@@ -81,15 +125,15 @@ fun QuranScreen(onBack: () -> Unit, onMushafClick: () -> Unit = {}) {
 // ==================== BROWSER: DAFTAR 114 SURAH ====================
 @Composable
 private fun QuranBrowser(
+    allSurahs: List<QuranRepository.Surah>,
     onOpenSurah: (QuranRepository.Surah) -> Unit,
     onBack: () -> Unit,
     onMushafClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val allSurahs = remember { QuranRepository.getSurahIndex(context) }
     var query by remember { mutableStateOf("") }
 
-    // Bacaan Terarah (v2.6) — pintu masuk satu arah ke halaman Mushaf
+    // Bacaan Terarah (v2.6) — banner menuju halaman Mushaf (pintu B)
     val portion = remember { TilawahData.getTodayPortion(context) }
 
     val mushafPrefs = remember {
@@ -112,13 +156,14 @@ private fun QuranBrowser(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkColors.Background)
+            .background(QuranColors.Background)
     ) {
-        // Header
+        // Header hijau rounded (bahasa visual v2.10)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(DarkColors.PrimaryDark)
+                .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+                .background(QuranColors.PrimaryDark)
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -126,39 +171,131 @@ private fun QuranBrowser(
                     Icon(
                         Icons.Default.ArrowBack,
                         contentDescription = "Kembali",
-                        tint = DarkColors.TextOnPrimary,
+                        tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
+                Column {
                     Text(
                         text = "Al-Qur'an",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = DarkColors.TextOnPrimary,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "114 Surah · 6236 Ayat · Offline",
+                        text = "114 Surah · 6.236 Ayat · Offline",
                         style = MaterialTheme.typography.labelMedium,
-                        color = DarkColors.HeaderSubtitle
+                        color = QuranColors.HeaderSubtitle
                     )
                 }
-                Icon(
-                    Icons.Default.MenuBook,
-                    contentDescription = null,
-                    tint = DarkColors.GoldLight,
-                    modifier = Modifier.size(26.dp)
-                )
             }
         }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Banner Bacaan Hari Ini (v2.6) — menuju halaman Mushaf (satu arah)
+            // Pil pencarian
+            item(key = "search") {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            "Cari surah...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = QuranColors.TextTertiary
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = QuranColors.TextTertiary)
+                    },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Hapus", tint = QuranColors.TextTertiary)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = QuranColors.Gold,
+                        unfocusedBorderColor = QuranColors.Divider,
+                        focusedContainerColor = QuranColors.Surface,
+                        unfocusedContainerColor = QuranColors.Surface,
+                        cursorColor = QuranColors.Gold
+                    )
+                )
+            }
+
+            // Kartu "Lanjutkan Membaca" — bingkai emas (mockup A1)
+            if (lastRead != null) {
+                item(key = "lastRead") {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, QuranColors.Gold, RoundedCornerShape(20.dp))
+                            .clickable { onOpenSurah(lastRead) },
+                        colors = CardDefaults.cardColors(containerColor = QuranColors.Surface),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(QuranColors.IconContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Bookmark,
+                                    contentDescription = null,
+                                    tint = QuranColors.Gold,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Lanjutkan Membaca",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = QuranColors.PrimaryDark,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "${lastRead.latinName} · ${lastRead.ayahCount} ayat",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = QuranColors.TextSecondary
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = QuranColors.Gold
+                            ) {
+                                Text(
+                                    text = "Lanjut",
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Banner Bacaan Hari Ini — pintu satu arah ke halaman Mushaf (B)
             if (portion.isNotEmpty()) {
                 item(key = "mushafBanner") {
                     val first = portion.first()
@@ -172,8 +309,8 @@ private fun QuranBrowser(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable(onClick = onMushafClick),
-                        colors = CardDefaults.cardColors(containerColor = DarkColors.PrimaryDark),
-                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = QuranColors.PrimaryDark),
+                        shape = RoundedCornerShape(20.dp),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Row(
@@ -186,25 +323,25 @@ private fun QuranBrowser(
                                 Text(
                                     text = "BACAAN HARI INI",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = DarkColors.GoldLight,
+                                    color = QuranColors.HeaderSubtitle,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = rangeText,
                                     style = MaterialTheme.typography.titleSmall,
-                                    color = DarkColors.TextOnPrimary,
+                                    color = Color.White,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
                                     text = "$totalAyat ayat · buka halaman Mushaf",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = DarkColors.HeaderSubtitle
+                                    color = QuranColors.HeaderSubtitle
                                 )
                             }
                             Icon(
                                 Icons.Default.ChevronRight,
                                 contentDescription = "Buka Mushaf",
-                                tint = DarkColors.GoldLight,
+                                tint = QuranColors.Gold,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -212,86 +349,18 @@ private fun QuranBrowser(
                 }
             }
 
-            // Banner terakhir dibaca
-            if (lastRead != null) {
-                item(key = "lastRead") {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenSurah(lastRead) },
-                        colors = CardDefaults.cardColors(
-                            containerColor = DarkColors.PrimaryContainer
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Bookmark,
-                                contentDescription = null,
-                                tint = DarkColors.Primary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Terakhir Dibaca",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = DarkColors.TextSecondary
-                                )
-                                Text(
-                                    text = "${lastRead.latinName} · Ayat ${lastRead.ayahCount}",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = DarkColors.Primary,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                            Icon(
-                                Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = DarkColors.Primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Pencarian surah
-            item(key = "search") {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = {
-                        Text("Cari surah ...", style = MaterialTheme.typography.bodyMedium)
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = DarkColors.TextTertiary)
-                    },
-                    trailingIcon = {
-                        if (query.isNotEmpty()) {
-                            IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Hapus", tint = DarkColors.TextTertiary)
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = DarkColors.Primary,
-                        unfocusedBorderColor = DarkColors.Border,
-                        focusedContainerColor = DarkColors.Surface,
-                        unfocusedContainerColor = DarkColors.Surface
-                    )
+            // Label seksi
+            item(key = "label") {
+                Text(
+                    text = "Daftar Surah",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = QuranColors.PrimaryDark,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
 
-            // Daftar 114 surah
+            // Daftar 114 surah — ornamen bintang-8 emas + nama Arab
             items(filtered, key = { it.number }) { surah ->
                 SurahRow(surah = surah, onClick = { onOpenSurah(surah) })
             }
@@ -301,7 +370,7 @@ private fun QuranBrowser(
                     Text(
                         text = "Surah tidak ditemukan",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = DarkColors.TextTertiary,
+                        color = QuranColors.TextTertiary,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -313,14 +382,45 @@ private fun QuranBrowser(
     }
 }
 
+/** Ornamen bintang-8 (dua persegi disilang 45°) dengan nomor surah di tengah. */
+@Composable
+private fun OctagramBadge(number: Int) {
+    Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val side = size.minDimension * 0.66f
+            val stroke = 1.4.dp.toPx()
+            val topLeft = Offset(center.x - side / 2f, center.y - side / 2f)
+            val rectSize = Size(side, side)
+            val corner = CornerRadius(3.dp.toPx())
+            listOf(0f, 45f).forEach { angle ->
+                withTransform({ rotate(angle, pivot = center) }) {
+                    drawRoundRect(
+                        color = QuranColors.Gold,
+                        topLeft = topLeft,
+                        size = rectSize,
+                        cornerRadius = corner,
+                        style = Stroke(width = stroke)
+                    )
+                }
+            }
+        }
+        Text(
+            text = number.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = QuranColors.PrimaryDark,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 @Composable
 private fun SurahRow(surah: QuranRepository.Surah, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = DarkColors.Surface),
-        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = QuranColors.Surface),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -329,33 +429,19 @@ private fun SurahRow(surah: QuranRepository.Surah, onClick: () -> Unit) {
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Nomor surah dalam kotak belah ketupat lembut
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(DarkColors.PrimaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = surah.number.toString(),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = DarkColors.Primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            OctagramBadge(number = surah.number)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = surah.latinName,
                     style = MaterialTheme.typography.titleMedium,
-                    color = DarkColors.TextPrimary,
+                    color = QuranColors.TextPrimary,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "${surah.revelation} · ${surah.ayahCount} ayat · ${surah.meaning}",
+                    text = "${surah.revelation} · ${surah.ayahCount} ayat",
                     style = MaterialTheme.typography.labelSmall,
-                    color = DarkColors.TextTertiary,
+                    color = QuranColors.TextTertiary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -364,7 +450,7 @@ private fun SurahRow(surah: QuranRepository.Surah, onClick: () -> Unit) {
             Text(
                 text = surah.arabicName,
                 style = MaterialTheme.typography.titleLarge,
-                color = DarkColors.Primary,
+                color = QuranColors.PrimaryDark,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -375,14 +461,16 @@ private fun SurahRow(surah: QuranRepository.Surah, onClick: () -> Unit) {
 @Composable
 private fun QuranReader(
     surahMeta: QuranRepository.Surah,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onPrev: () -> Unit,
+    onNext: () -> Unit
 ) {
     val context = LocalContext.current
     val surah = remember(surahMeta.number) {
         QuranRepository.getSurah(context, surahMeta.number)
     }
 
-    // Simpan posisi baca terakhir (level surah) agar banner "Terakhir Dibaca" aktif
+    // Simpan posisi baca terakhir (level surah) agar kartu "Lanjutkan Membaca" aktif
     LaunchedEffect(surahMeta.number) {
         context.getSharedPreferences("mushaf_prefs", android.content.Context.MODE_PRIVATE)
             .edit()
@@ -393,13 +481,14 @@ private fun QuranReader(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkColors.Background)
+            .background(QuranColors.Background)
     ) {
-        // Header
+        // Header hijau rounded
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(DarkColors.PrimaryDark)
+                .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+                .background(QuranColors.PrimaryDark)
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -407,7 +496,7 @@ private fun QuranReader(
                     Icon(
                         Icons.Default.ArrowBack,
                         contentDescription = "Kembali",
-                        tint = DarkColors.TextOnPrimary,
+                        tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -416,13 +505,13 @@ private fun QuranReader(
                     Text(
                         text = surahMeta.latinName,
                         style = MaterialTheme.typography.titleLarge,
-                        color = DarkColors.TextOnPrimary,
+                        color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${surahMeta.revelation} · ${surahMeta.ayahCount} ayat · ${surahMeta.meaning}",
+                        text = "${surahMeta.revelation} · ${surahMeta.ayahCount} ayat",
                         style = MaterialTheme.typography.labelMedium,
-                        color = DarkColors.HeaderSubtitle,
+                        color = QuranColors.HeaderSubtitle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -430,7 +519,7 @@ private fun QuranReader(
                 Text(
                     text = surahMeta.arabicName,
                     style = MaterialTheme.typography.titleLarge,
-                    color = DarkColors.GoldLight,
+                    color = QuranColors.Gold,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -441,28 +530,52 @@ private fun QuranReader(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = "Teks surah tidak dapat dimuat",
-                    color = DarkColors.TextSecondary,
+                    color = QuranColors.TextSecondary,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Basmalah dekoratif (kecuali Al-Fatihah & At-Taubah)
+                // Kartu bismillah + artinya (keputusan user v2.10 — catatan n3).
+                // Al-Fatihah: bismillah = ayat 1; At-Taubah: satu-satunya surah
+                // tanpa basmalah.
                 if (surah.number != 1 && surah.number != 9) {
                     item(key = "bismillah") {
-                        Text(
-                            text = "بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = DarkColors.Primary,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 10.dp)
-                        )
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = QuranColors.Surface),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(0.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 14.dp, horizontal = 16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ",
+                                    fontSize = 22.sp,
+                                    lineHeight = 38.sp,
+                                    color = QuranColors.PrimaryDark,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Dengan nama Allah Yang Maha Pengasih, Maha Penyayang.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontStyle = FontStyle.Italic,
+                                    color = QuranColors.TextTertiary,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -475,7 +588,7 @@ private fun QuranReader(
                     Text(
                         text = "· ${surah.latinName} selesai · ${surah.ayahCount} ayat ·",
                         style = MaterialTheme.typography.labelSmall,
-                        color = DarkColors.TextTertiary,
+                        color = QuranColors.TextTertiary,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -483,15 +596,56 @@ private fun QuranReader(
                     )
                 }
             }
+
+            // Bar bawah: pindah surah sebelumnya / berikutnya (mockup A2)
+            Surface(color = QuranColors.Surface, shadowElevation = 8.dp) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val prevEnabled = surahMeta.number > 1
+                    val nextEnabled = surahMeta.number < 114
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (prevEnabled) QuranColors.IconContainer else QuranColors.Divider.copy(alpha = 0.4f),
+                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable(enabled = prevEnabled, onClick = onPrev)
+                    ) {
+                        Text(
+                            text = "‹ Sebelumnya",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (prevEnabled) QuranColors.PrimaryDark else QuranColors.TextTertiary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (nextEnabled) QuranColors.PrimaryDark else QuranColors.Divider.copy(alpha = 0.4f),
+                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable(enabled = nextEnabled, onClick = onNext)
+                    ) {
+                        Text(
+                            text = "Berikutnya ›",
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (nextEnabled) Color.White else QuranColors.TextTertiary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 /**
- * Kartu ayat dengan 3 unsur (v2.3):
+ * Kartu ayat dengan 3 unsur (dipertahankan dari v2.3, tampilan baru v2.10):
  *  A. Tulisan Arab   — besar, rata kanan
  *  B. Arab-Latin     — transliterasi untuk yang belum lancar membaca Arab
  *  C. Arti           — terjemahan Kemenag RI
+ * Tanpa ikon audio/bookmark (keputusan user v2.10 — catatan n2).
  */
 @Composable
 private fun AyahCard(
@@ -502,8 +656,8 @@ private fun AyahCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkColors.Surface),
-        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = QuranColors.Surface),
+        shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -511,28 +665,26 @@ private fun AyahCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Nomor ayat + garis
+            // Pil "Ayat N" cincin emas + garis
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(DarkColors.PrimaryContainer)
-                        .border(1.dp, DarkColors.Primary, CircleShape),
-                    contentAlignment = Alignment.Center
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color.Transparent,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, QuranColors.Gold)
                 ) {
                     Text(
-                        text = ayahNumber.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = DarkColors.Primary,
-                        fontWeight = FontWeight.Bold
+                        text = "Ayat $ayahNumber",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = QuranColors.PrimaryDark,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 HorizontalDivider(
                     modifier = Modifier.weight(1f),
                     thickness = 1.dp,
-                    color = DarkColors.Divider
+                    color = QuranColors.Divider
                 )
             }
 
@@ -541,10 +693,9 @@ private fun AyahCard(
             // A. Tulisan Arab
             Text(
                 text = arabic,
-                style = MaterialTheme.typography.titleLarge,
                 fontSize = 26.sp,
                 lineHeight = 46.sp,
-                color = DarkColors.TextPrimary,
+                color = QuranColors.TextPrimary,
                 textAlign = TextAlign.Right,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -556,7 +707,7 @@ private fun AyahCard(
                 text = latin,
                 style = MaterialTheme.typography.bodyMedium,
                 fontStyle = FontStyle.Italic,
-                color = DarkColors.TextSecondary,
+                color = QuranColors.TextSecondary,
                 lineHeight = 20.sp
             )
 
@@ -566,7 +717,7 @@ private fun AyahCard(
             Text(
                 text = translation,
                 style = MaterialTheme.typography.bodyMedium,
-                color = DarkColors.TextPrimary,
+                color = QuranColors.TextPrimary,
                 lineHeight = 21.sp
             )
         }

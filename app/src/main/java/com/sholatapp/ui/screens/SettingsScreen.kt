@@ -223,7 +223,7 @@ fun SettingsScreen(
             SettingInfoRow(
                 icon = Icons.Default.Info,
                 title = "Versi",
-                value = "v2.9.0",
+                value = "v2.10.0",
                 valueAsChip = true
             )
             SettingInfoRow(
@@ -247,7 +247,7 @@ fun SettingsScreen(
             // Footer
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "SholatApp v2.9.0 · Dibuat dengan cinta untuk umat",
+                text = "SholatApp v2.10.0 · Dibuat dengan cinta untuk umat",
                 style = MaterialTheme.typography.labelSmall,
                 color = DarkColors.TextTertiary,
                 textAlign = TextAlign.Center,
@@ -433,6 +433,7 @@ fun SettingsScreen(
 
 /** Entri ringkas riwayat versi (terbaru di atas). */
 private val changelogEntries: List<Pair<String, String>> = listOf(
+    "v2.10.0" to "Dua halaman Qur'an: Al-Qur'an tampilan baru + Mushaf mengalir gaya asli; pintu Lainnya dihapus — Mutabaah naik ke Beranda, Doa & Asmaul Husna jadi kategori Zikir",
     "v2.9.0" to "Kiblat baru: kompas akurat + mode terkunci + getar; fix kritis kalender Hijriah meleset 26 tahun",
     "v2.8.0" to "Pengaturan baru: profil & ubah nama, status perizinan, perbarui lokasi, konfirmasi reset",
     "v2.7.0" to "Puasa: countdown langsung, imsak akurat, kalender tap-catat, pengingat sunnah",

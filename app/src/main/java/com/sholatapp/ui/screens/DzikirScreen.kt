@@ -170,6 +170,14 @@ fun DzikirScreen(onQuranClick: () -> Unit = {}) {
             }
         }
 
+        // ==================== KATEGORI KHUSUS (v2.10): DOA & ASMAUL HUSNA ====
+        // Pindahan dari halaman "Lainnya" yang dihapus (keputusan user).
+        // Saat chip kategori ini aktif, kontennya mengambil alih badan halaman
+        // (kategori pintu — tanpa item DzikirItem).
+        when (selectedCategory) {
+            DzikirCategory.DOA -> DoaContent(modifier = Modifier.weight(1f))
+            DzikirCategory.ASMAUL_HUSNA -> AsmaulHusnaContent(modifier = Modifier.weight(1f))
+            else -> {
         // ==================== ENTRI AL-QUR'AN ====================
         // Mushaf lengkap 114 surah (Arab, Latin, Arti) — satu database
         // dengan halaman Mushaf Bacaan Terarah.
@@ -280,6 +288,8 @@ fun DzikirScreen(onQuranClick: () -> Unit = {}) {
                     onOpenDetail = { sheetItem = item }
                 )
             }
+        }
+        }
         }
     }
 

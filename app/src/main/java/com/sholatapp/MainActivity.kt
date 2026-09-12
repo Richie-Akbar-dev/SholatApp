@@ -59,7 +59,9 @@ enum class AppTab(val label: String, val icon: ImageVector) {
 sealed class AppScreen {
     data object Kiblat : AppScreen()
     data object Kalender : AppScreen()
-    data object MenuLainnya : AppScreen()
+    // v2.10: MenuLainnya dihapus (keputusan user) — digantikan rute Mutabaah
+    // langsung dari tile Beranda; Doa & Asmaul Husna kini kategori di Zikir.
+    data object Mutabaah : AppScreen()
     data object PusatNotifikasi : AppScreen()
     data object AzanPicker : AppScreen()
     data object AlQuran : AppScreen()
@@ -156,7 +158,7 @@ class MainActivity : ComponentActivity() {
                                             onNotificationClick = { overlayScreen = AppScreen.PusatNotifikasi },
                                             onSettingsClick = { selectedTab = AppTab.PROFIL },
                                             onSalatClick = { selectedTab = AppTab.SALAT },
-                                            onLainnyaClick = { overlayScreen = AppScreen.MenuLainnya }
+                                            onMutabaahClick = { overlayScreen = AppScreen.Mutabaah }
                                         )
                                         AppTab.SALAT -> SalatScreen(
                                             viewModel = viewModel,
@@ -217,7 +219,7 @@ class MainActivity : ComponentActivity() {
                                             is AppScreen.Kalender -> KalenderScreen(
                                                 onBack = { overlayScreen = null }
                                             )
-                                            is AppScreen.MenuLainnya -> MenuLainnyaScreen(
+                                            is AppScreen.Mutabaah -> IbadahScreen(
                                                 onBack = { overlayScreen = null }
                                             )
                                             is AppScreen.PusatNotifikasi -> PusatNotifikasiScreen(

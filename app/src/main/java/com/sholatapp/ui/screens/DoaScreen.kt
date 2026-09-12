@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -26,13 +28,26 @@ import com.sholatapp.model.DoaCategory
 import com.sholatapp.model.DoaItem
 import com.sholatapp.ui.theme.DarkColors
 
+/**
+ * Konten Doa Harian — v2.10 (pindah dari halaman "Lainnya").
+ *
+ * Sejak v2.10 halaman "Lainnya" dihapus (keputusan user): konten Doa kini
+ * ditanamkan sebagai KATEGORI di halaman Zikir (chip "Doa"). Karena itu
+ * composable ini TANPA header sendiri — header milik halaman Zikir.
+ *
+ * Perbaikan bawaan dari audit:
+ *  - Chip kategori ("Semua" + 8 DoaCategory) kini dalam baris
+ *    horizontalScroll — bug overflow lama (chip tak terjangkau) tuntas.
+ *  - Warna teks input pencarian dibetulkan (dulu PrimaryContainer yang
+ *    kontrasnya aneh) -> TextPrimary.
+ */
 @Composable
-fun DoaScreen() {
+fun DoaContent(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var selectedCategory by remember { mutableStateOf<DoaCategory?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     val prefs = context.getSharedPreferences("doa_favorites", Context.MODE_PRIVATE)
-    
+
     val allDoa = remember { DoaData.getAllDoa().toMutableList() }
 
     // Favorite status stored as Compose state so toggling triggers recomposition
@@ -49,108 +64,99 @@ fun DoaScreen() {
         if (selectedCategory != null) list = list.filter { it.category == selectedCategory }
         if (searchQuery.isNotBlank()) {
             val q = searchQuery.lowercase()
-            list = list.filter { 
-                it.title.lowercase().contains(q) || 
-                it.latin.lowercase().contains(q) || 
-                it.translation.lowercase().contains(q)
+            list = list.filter {
+                it.title.lowercase().contains(q) ||
+                        it.latin.lowercase().contains(q) ||
+                        it.translation.lowercase().contains(q)
             }
         }
         list.map { it.copy(isFavorite = it.id in favoriteIds.value) }
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
+            .fillMaxWidth()
             .background(DarkColors.Background)
     ) {
-        // Header
-        Column(
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Search bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Cari doa...", color = DarkColors.HeaderPlaceholder) },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(DarkColors.PrimaryDark)
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(12.dp)),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = DarkColors.Gold,
+                unfocusedBorderColor = DarkColors.HeaderPlaceholder,
+                cursorColor = DarkColors.Gold,
+                focusedTextColor = DarkColors.TextPrimary,
+                unfocusedTextColor = DarkColors.TextPrimary
+            ),
+            leadingIcon = {
+                Icon(Icons.Default.Search, null, tint = DarkColors.HeaderPlaceholder)
+            },
+            trailingIcon = {
+                if (searchQuery.isNotBlank()) {
+                    Icon(
+                        Icons.Default.Close,
+                        null,
+                        tint = DarkColors.HeaderPlaceholder,
+                        modifier = Modifier.clickable { searchQuery = "" }
+                    )
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Category chips — baris scroll-safe (fix bug overflow: dulu Row
+        // statis tanpa horizontalScroll sehingga 5+ kategori tak terjangkau)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = "Kumpulan Doa",
-                style = MaterialTheme.typography.headlineSmall,
-                color = DarkColors.Gold,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Search bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Cari doa...", color = DarkColors.HeaderPlaceholder) },
+            // "Semua" chip
+            val allSelected = selectedCategory == null
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp)),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = DarkColors.Gold,
-                    unfocusedBorderColor = DarkColors.HeaderPlaceholder,
-                    cursorColor = DarkColors.Gold,
-                    focusedTextColor = DarkColors.PrimaryContainer,
-                    unfocusedTextColor = DarkColors.PrimaryContainer
-                ),
-                leadingIcon = {
-                    Icon(Icons.Default.Search, null, tint = DarkColors.HeaderPlaceholder)
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotBlank()) {
-                        Icon(
-                            Icons.Default.Close,
-                            null,
-                            tint = DarkColors.HeaderPlaceholder,
-                            modifier = Modifier.clickable { searchQuery = "" }
-                        )
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(10.dp))
-            
-            // Category chips - scrollable
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { selectedCategory = null },
+                color = if (allSelected) DarkColors.Gold else DarkColors.Surface,
+                shape = RoundedCornerShape(16.dp)
             ) {
-                // "Semua" chip
-                val allSelected = selectedCategory == null
+                Text(
+                    text = "Semua",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (allSelected) Color.Black else DarkColors.TextSecondary
+                )
+            }
+
+            DoaCategory.entries.forEach { cat ->
+                val isSelected = selectedCategory == cat
                 Surface(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .clickable { selectedCategory = null },
-                    color = if (allSelected) DarkColors.Gold else DarkColors.Surface,
+                        .clickable { selectedCategory = if (isSelected) null else cat },
+                    color = if (isSelected) DarkColors.Gold else DarkColors.Surface,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
-                        text = "Semua",
+                        text = cat.displayName,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (allSelected) Color.Black else DarkColors.TextSecondary
+                        color = if (isSelected) Color.Black else DarkColors.TextSecondary,
+                        maxLines = 1
                     )
-                }
-                
-                DoaCategory.entries.forEach { cat ->
-                    val isSelected = selectedCategory == cat
-                    Surface(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { selectedCategory = if (isSelected) null else cat },
-                        color = if (isSelected) DarkColors.Gold else DarkColors.Surface,
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Text(
-                            text = cat.displayName,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isSelected) Color.Black else DarkColors.TextSecondary,
-                            maxLines = 1
-                        )
-                    }
                 }
             }
         }
@@ -179,6 +185,7 @@ fun DoaScreen() {
                     }
                 )
             }
+            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 }
@@ -226,7 +233,7 @@ private fun DoaCard(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = item.title,
@@ -234,7 +241,7 @@ private fun DoaCard(
                 color = DarkColors.TextPrimary,
                 fontWeight = FontWeight.SemiBold
             )
-            
+
             // Expand/collapse indicator
             Row(
                 modifier = Modifier
@@ -254,7 +261,7 @@ private fun DoaCard(
                     modifier = Modifier.size(16.dp)
                 )
             }
-            
+
             // Expanded content
             AnimatedVisibility(
                 visible = expanded,
@@ -278,9 +285,9 @@ private fun DoaCard(
                             lineHeight = 32.sp
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(10.dp))
-                    
+
                     // Latin
                     Text(
                         text = item.latin,
@@ -289,9 +296,9 @@ private fun DoaCard(
                         modifier = Modifier.padding(horizontal = 4.dp),
                         lineHeight = 24.sp
                     )
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     // Translation
                     Row(modifier = Modifier.padding(horizontal = 4.dp)) {
                         Text(

@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -21,45 +20,22 @@ import com.sholatapp.data.AsmaulHusnaData
 import com.sholatapp.ui.theme.DarkColors
 
 /**
- * Layar Asmaul Husna — 99 Nama Allah dengan teks Arab,
- * transliterasi Latin, arti, dan pencarian.
+ * Konten Asmaul Husna — v2.10 (pindah dari halaman "Lainnya").
+ *
+ * Sejak v2.10 halaman "Lainnya" dihapus (keputusan user): 99 Nama Allah
+ * kini ditanamkan sebagai KATEGORI di halaman Zikir (chip "Asmaul Husna"),
+ * pola sama dengan kategori "Doa". Composable ini TANPA header sendiri.
  */
 @Composable
-fun AsmaulHusnaScreen(onBack: () -> Unit) {
+fun AsmaulHusnaContent(modifier: Modifier = Modifier) {
     var query by remember { mutableStateOf("") }
     val results = remember(query) { AsmaulHusnaData.search(query) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
+            .fillMaxWidth()
             .background(DarkColors.Background)
     ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(DarkColors.PrimaryDark)
-                .padding(horizontal = 8.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Kembali", tint = DarkColors.Gold)
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Asmaul Husna",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = DarkColors.Gold,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "99 Nama Allah yang Indah",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = DarkColors.HeaderSubtitle
-                )
-            }
-        }
-
         // Search bar
         OutlinedTextField(
             value = query,
