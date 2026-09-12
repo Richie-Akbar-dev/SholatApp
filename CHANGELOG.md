@@ -1,5 +1,37 @@
 # Changelog — SholatApp
 
+## v2.9.0 (2026-09-12)
+
+Fokus: audit lintas aplikasi menemukan 9 halaman sekunder yang belum tersentuh update. Rilis ini memperbaiki **bug kritis kalkulator Hijriah (meleset ±26 tahun)** yang mengena ke Beranda, Kalender, dan Puasa, lalu merombak halaman **Kiblat** menurut mockup & keputusan user (badge dial diadopsi, kontainer ikon pola aplikasi).
+
+### 🐞 Perbaikan
+
+1. **KRITIS — Kalkulator Hijriah meleset ±26 tahun** — rumus `jdToHijri` lama (konstanta 531/283/19.45/285 + offset epoch salah) menghasilkan tanggal absurd, mis. 1 Mar 2025 terbaca "7 Muharram 1472 H" padahal 1 Ramadhan 1446 H. Diganti algoritma Kuwaiti (tabular) standar yang diverifikasi terhadap tanggal KEMENAG RI (1 Ramadhan 1446, 1 Syawal 1446, 27 Rajab 1446 tepat; 10 Dzulhijjah 1446 selisih 1 hari — wajar antara tabular dan rukyat). Berdampak ke: tanggal Hijriah di header Beranda, seluruh grid Kalender Islam, chip Hijriah halaman Puasa, dan **banner Ramadhan otomatis yang sebelumnya tidak akan pernah muncul**.
+2. **Hari Besar Islam salah bulan** — "Hari Arafah (9 Dzulhijjah)" dan "Idul Adha" terdaftar di bulan 10 (Syawal), bukan 12 (Dzulhijjah); entri Idul Adha ganda dihapus. Kini tampil di bulan yang benar.
+3. **Aturan tahun kabur Hijriah salah** — aturan modulo lama bukan algoritma Kuwaiti; diganti aturan tabular standar `(11y + 14) mod 30 < 11`.
+4. **KRITIS — Kompas Kiblat meleset 90°** — skala derajat & label mata angin digambar tanpa koreksi −90° sementara jarum kiblat memakainya, sehingga dial dan jarum tidak pernah cocok (huruf "U" tergambar di kanan saat menghadap utara). Kini semua elemen dial memakai satu rumus sudut yang sama.
+5. **Kiblat dihitung dari koordinat (0,0)** — jika lokasi belum terdeteksi, arah & jarak tampil dengan angka omong kosong. Kini ada kartu "Menunggu Lokasi" + tombol Deteksi Lokasi.
+6. **Format angka Kiblat** — derajat & jarak kini memakai format Indonesia (koma desimal, titik ribuan) sesuai mockup.
+
+### ✨ Fitur Baru / Perubahan — Halaman Kiblat (v2.9)
+
+1. **Header baru** — hijau tua `143A2E` sudut membulat + judul putih "Kiblat" + subtitle "Penunjuk arah Ka'bah"; konten latar terang `F5F5F0` (ganti tema gelap lama).
+2. **Kompas dalam kartu putih** — cincin emas, tick 360°, label mata angin Indonesia (U/TL/T/TG/S/BD/B/BL), marker segitiga hijau di puncak sebagai target sejajar, label Arab "كعبة" pada ujung jarum emas.
+3. **Badge sudut kiblat** — pill "KIBLAT 294,5°" di bawah dial (adopsi tambahan mockup Stitch).
+4. **Banner status dinamis** — "Putar perangkat hingga jarum sejajar tanda hijau" → berubah hijau "**Arah Kiblat Terkunci**" saat selisih ≤ 4°, disertai getaran singkat.
+5. **Mode terkunci dengan getar** — saat arah cocok, cincin dial berubah hijau; getar satu kali setiap kali masuk kondisi terkunci.
+6. **Chip kalibrasi** — saat akurasi magnetometer rendah, muncul chip amber "gerakkan perangkat membentuk angka 8".
+7. **Sensor lebih stabil** — sumber azimuth beralih ke `TYPE_ROTATION_VECTOR` (fallback accel+mag tetap ada) + `remapCoordinateSystem` agar benar di orientasi layar apa pun.
+8. **Deteksi sensor tidak tersedia** — perangkat tanpa magnetometer kini menampilkan pesan jujur, bukan kompas mati dengan angka 0°.
+9. **Kartu informasi gaya baru** — "Arah Kiblat" & "Jarak ke Ka'bah" dengan kontainer ikon hijau muda `E8F0EA` (pola aplikasi), plus chip lokasi di bawah header dan kartu instruksi kalibrasi.
+
+### 🔧 Teknis
+
+1. `KiblatScreen.kt` ditulis ulang penuh (~700 baris) dengan palet terang sendiri (KiblatColors) mengikuti bahasa visual v2.4–v2.8.
+2. `HijriCalculator` diuji port-Python terhadap 8 tanggal referensi sebelum dipindahkan ke Kotlin; pembagian memakai `floorDiv` agar identik dengan semantik pembulatan JS/Python.
+3. Wiring baru `onDetectLocation` dari `MainActivity` ke halaman Kiblat.
+4. Bersih-bersih kecil: variabel mati `qiblaRelative` dihapus.
+
 ## v2.8.0 (2026-09-12)
 
 Fokus: rombak halaman **Pengaturan** menurut mockup & keputusan user — kartu profil + ubah nama, kartu Status Perizinan Android, perbarui lokasi, grid metode KEMENAG, khatam dengan progress bar, konfirmasi reset, riwayat versi, dan footer. Halaman terakhir dengan pola UI lama kini mengikuti bahasa visual v2.4–v2.7.

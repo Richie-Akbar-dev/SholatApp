@@ -85,21 +85,9 @@ object HijriCalculator {
     }
 
     private fun isHijriLeapYear(year: Int): Boolean {
-        // Simple leap year rule (Kuwaiti algorithm approximation)
-        return when {
-            year % 2 == 0 -> false
-            year % 3 == 0 -> false
-            year % 4 == 0 -> true
-            year % 5 == 0 -> false
-            year % 7 == 0 -> true
-            year % 8 == 0 -> false
-            year % 10 == 0 -> true
-            year % 12 == 0 -> false
-            year % 15 == 0 -> true
-            year % 16 == 0 -> false
-            year % 18 == 0 -> true
-            else -> false
-        }
+        // v2.9: aturan tabular standar siklus 30 tahun (menggantikan aturan modulo lama
+        // yang bukan algoritma Kuwaiti): lompat jika (11y + 14) mod 30 < 11
+        return ((11L * year + 14L) % 30L) < 11L
     }
 
     private fun gregorianToJd(year: Int, month: Int, day: Int): Double {
@@ -112,15 +100,24 @@ object HijriCalculator {
     }
 
     private fun jdToHijri(jd: Double): HijriDate {
-        val l = jd - 1948439.5
-        val n = floor(l / 10631.0)
-        val lPrime = l - n * 10631.0
-        val j = floor((lPrime - 0.5) / 531.0) * 283
-        val lDPrime = lPrime - floor(j / 283.0) * 531.0
-        val i = floor((lDPrime / 20.0) + 0.5)
-        val d = lDPrime - floor(i * 19.45)
-        val m = if (i < 145) ((i - 1) / 30) + 1 else ((i - 2) / 30) + 1
-        val y = 30 * n + j / 285 + 30
+        // v2.9 FIX KRITIS: rumus lama menghasilkan tanggal meleset +-26 TAHUN
+        // (1 Mar 2025 terbaca "7 Muharram 1472" — seharusnya 1 Ramadhan 1446).
+        // Diganti algoritma Kuwaiti (tabular) standar, terverifikasi Python thd
+        // tanggal KEMENAG RI: 1 Ramadhan 1446 = 1 Mar 2025 OK, 1 Syawal 1446 =
+        // 31 Mar 2025 OK, 27 Rajab 1446 = 27 Jan 2025 OK, 10 Dzulhijjah 1446 =
+        // 6 Jun 2025 selisih 1 hari (wajar: tabular vs rukyat).
+        // floorDiv dipakai agar pembagian negatif identik dgn Math.floor (JS/Python).
+        val jdInt = Math.floor(jd + 0.5).toLong()
+        var l = jdInt - 1948440L + 10632L
+        val n = (l - 1L).floorDiv(10631L)
+        l = l - 10631L * n + 354L
+        val j = (10985L - l).floorDiv(5316L) * (50L * l).floorDiv(17719L) +
+                l.floorDiv(5670L) * (38L * l).floorDiv(7597L)
+        l = l - (30L - j).floorDiv(15L) * (17719L * j).floorDiv(50L) +
+                j.floorDiv(16L) * (15238L * j).floorDiv(43L) + 29L
+        val m = (24L * l).floorDiv(709L)
+        val d = l - (709L * m).floorDiv(24L)
+        val y = 30L * n + j - 30L
         return HijriDate(d.toInt().coerceIn(1, 30), m.toInt().coerceIn(1, 12), y.toInt())
     }
 }
@@ -137,9 +134,10 @@ private fun getIslamicEvents(hijriYear: Int): List<IslamicEvent> = listOf(
     IslamicEvent(9, 1, "1 Ramadhan $hijriYear H", KalenderColors.EventRed),
     IslamicEvent(9, 27, "Nuzulul Quran (17 Ramadhan)", KalenderColors.Gold),
     IslamicEvent(10, 1, "1 Syawal $hijriYear H - Hari Raya Idul Fitri", KalenderColors.EventRed),
-    IslamicEvent(10, 10, "Hari Arafah (9 Dzulhijjah)", KalenderColors.Gold),
-    IslamicEvent(10, 11, "10 Dzulhijjah - Hari Raya Idul Adha", KalenderColors.EventRed),
-    IslamicEvent(12, 10, "Hari Raya Idul Adha", KalenderColors.EventRed),
+    // v2.9 FIX: Arafah & Idul Adha sebelumnya terdaftar bulan 10 (Syawal) —
+    // seharusnya bulan 12 (Dzulhijjah); entri Idul Adha ganda dihapus
+    IslamicEvent(12, 9, "Hari Arafah (9 Dzulhijjah)", KalenderColors.Gold),
+    IslamicEvent(12, 10, "10 Dzulhijjah - Hari Raya Idul Adha", KalenderColors.EventRed),
 )
 
 // ==================== MAIN SCREEN ====================

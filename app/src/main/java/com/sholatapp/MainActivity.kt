@@ -210,7 +210,9 @@ class MainActivity : ComponentActivity() {
                                                 latitude = uiState.latitude,
                                                 longitude = uiState.longitude,
                                                 locationName = uiState.locationAddress,
-                                                onBack = { overlayScreen = null }
+                                                onBack = { overlayScreen = null },
+                                                // v2.9: guard lokasi — deteksi ulang dari halaman Kiblat
+                                                onDetectLocation = { viewModel.detectLocation() }
                                             )
                                             is AppScreen.Kalender -> KalenderScreen(
                                                 onBack = { overlayScreen = null }
