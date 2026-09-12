@@ -1,5 +1,33 @@
 # Changelog — SholatApp
 
+## v2.7.0 (2026-09-12)
+
+Fokus: rombak halaman **Puasa** menurut mockup & keputusan user — tema terang konsisten, countdown hidup, kalender menjadi mesin pencatatan (fungsi "Catat" digeser), jadwal sunnah konkret + pengingat notifikasi, statistik bermakna, Niat & Doa pop up.
+
+### 🐞 Perbaikan
+
+1. **Countdown beku** — angka imsak/berbuka dihitung sekali saat halaman dibuka. Kini dipicu ticker 1 detik ViewModel (`currentTotalSeconds`) sehingga berdetak live seperti halaman Salat.
+2. **Jam Imsak salah** — label "Imsak (Subuh)" menampilkan jam Subuh. Kini memakai getter `imsak` (−10 menit, standar KEMENAG) yang sama dengan Beranda & Salat.
+3. **Tanpa error state** — seluruh halaman terkurung `if (schedule != null)`. Kini hanya area hero yang bergantung jadwal; kalender, pencatatan, statistik, dan doa tetap berfungsi meski lokasi gagal; hero menampilkan kartu error + **Coba Lagi**.
+4. **Tema menyimpang** — satu-satunya halaman gelap padahal aplikasi terang-murni sejak v2.2. Kini tema terang konsisten (hero hijau tua + konten putih, palet standar).
+5. **Header** — alamat lokasi dihapus (konsisten pola v2.4); statistik "Persentase" lemah makna diganti kolom bermakna.
+
+### ✨ Fitur Baru / Perubahan
+
+1. **Hero satuan cerdas** — label MENUJU IMSAK / MENUJU BERBUKA / MENUJU IMSAK BESOK sesuai waktu, jam target, countdown 3 kotak live, chip tanggal Hijriah, bar "waktu puasa terlewati x%", dan info **Imsak** (menggantikan Subuh — pilihan user).
+2. **Kalender tap-catat** — fungsi tombol "Catat" digeser: ketuk tanggal (lampau/hari ini/mendatang) = catat puasa pada tanggal itu; ketuk lagi = batalkan. Kartu status hari ini tetap bisa diketuk (sinkron dengan kalender) + chip jenis otomatis ("Wajib · Ramadhan" / "Sunnah · Senin" / "Sunnah · Kamis" / "Sunnah · Ayyamul Bidh").
+3. **Jadwal Puasa Sunnah Bulan Ini** — daftar tanggal konkret (chip "Sen 7", "Kam 10", "Sel 13–15 · Ayyamul Bidh") menggantikan kartu info statis + label **"x Hari Lagi"** menuju hari sunnah terdekat.
+4. **Pengingat Puasa Sunnah (notifikasi)** — notifikasi pukul 20:00 pada malam sebelum hari sunnah ("Besok Puasa Sunnah Senin…"). Rantai alarm mandiri + disetel ulang saat app dibuka & setelah reboot. Toggle di **Pusat Notifikasi**, kanal notifikasi sendiri.
+5. **Statistik** — Bulan Ini / Total / Tahun Ini (tanpa target tahunan — dihapus sesuai keputusan user).
+6. **Niat & Doa pop up** — chip "Niat Puasa" & "Doa Berbuka" memunculkan lembar bawah teks penuh (Arab + latin + arti); data satu sumber dengan Doa Harian (item baru "Doa Niat Puasa" ikut tampil di layar Doa).
+7. **Banner Ramadhan otomatis** — saat bulan Hijriah 9: "Ramadhan hari ke-n dari 30" + progres + sisa hari menuju 1 Syawal (memanfaatkan HijriCalculator yang sudah ada).
+
+### 🔧 Teknis
+
+- Komponen baru: `SunnahDayCalculator` (logika bersama UI + notifikasi), `SunnahReminderReceiver`, kanal notifikasi `sunnah_reminder_channel`.
+- UiState + `currentTotalSeconds` (ticker) & `isSunnahReminderEnabled`; `PusatNotifikasiScreen(onToggleSunnahReminder=…)`.
+- versionCode 8, versionName 2.7.0.
+
 ## v2.6.0 (2026-09-12)
 
 Fokus: halaman baru **Mushaf — Bacaan Terarah** sesuai arahan user: hanya teks Arab mengalir menerus (gaya mushaf asli), setelan khatam di Pengaturan, tanpa tautan keluar. Satu database Al-Qur'an, dua output (pembaca lengkap + bacaan jadwalan sistem).

@@ -67,6 +67,14 @@ object DoaData {
             translation = "Telah hilang dahaga, urat-urat telah basah, dan pahala telah ditetapkan insya Allah.",
             category = DoaCategory.MAKAN
         ),
+        DoaItem(
+            id = "makan_4",
+            title = "Doa Niat Puasa",
+            arabic = "نَوَيْتُ صَوْمَ غَدٍ عَنْ أَدَاءِ فَرْضِ اللّٰهِ تَعَالَى",
+            latin = "Nawaitu shauma ghadin 'an adaa'i fardhillaahi ta'aalaa.",
+            translation = "Aku niat berpuasa esok hari demi menunaikan kewajiban Allah Ta'ala.",
+            category = DoaCategory.MAKAN
+        ),
 
         // ==================== RUMAH ====================
         DoaItem(

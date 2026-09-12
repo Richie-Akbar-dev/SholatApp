@@ -61,6 +61,11 @@
             android:name=".alarm.MidnightRescheduleReceiver"
             android:exported="false" />
 
+        <!-- Sunnah fasting reminder (eve of Senin/Kamis/Ayyamul Bidh) -->
+        <receiver
+            android:name=".alarm.SunnahReminderReceiver"
+            android:exported="false" />
+
         <!-- Boot receiver to reschedule alarms after reboot -->
         <receiver
             android:name=".alarm.BootReceiver"

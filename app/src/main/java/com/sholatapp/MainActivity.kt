@@ -209,7 +209,8 @@ class MainActivity : ComponentActivity() {
                                             )
                                             is AppScreen.PusatNotifikasi -> PusatNotifikasiScreen(
                                                 uiState = uiState,
-                                                onBack = { overlayScreen = null }
+                                                onBack = { overlayScreen = null },
+                                                onToggleSunnahReminder = { viewModel.toggleSunnahReminder(it) }
                                             )
                                             is AppScreen.AzanPicker -> AzanPickerScreen(
                                                 azanPlayer = azanPlayer,

@@ -21,6 +21,10 @@ class NotificationHelper(private val context: Context) {
         const val PREP_CHANNEL_ID = "prep_alarm_channel"
         const val PREP_CHANNEL_NAME = "Pengingat Sholat"
         const val PREP_CHANNEL_DESC = "Alarm 20 menit sebelum waktu sholat"
+
+        const val SUNNAH_CHANNEL_ID = "sunnah_reminder_channel"
+        const val SUNNAH_CHANNEL_NAME = "Pengingat Puasa Sunnah"
+        const val SUNNAH_CHANNEL_DESC = "Pengingat malam sebelum puasa sunnah (Senin, Kamis, Ayyamul Bidh)"
     }
 
     private val notificationManager =
@@ -55,6 +59,18 @@ class NotificationHelper(private val context: Context) {
             setSound(null, null)
         }
         notificationManager.createNotificationChannel(prepChannel)
+
+        // Sunnah fasting reminder channel (v2.7)
+        val sunnahChannel = NotificationChannel(
+            SUNNAH_CHANNEL_ID,
+            SUNNAH_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = SUNNAH_CHANNEL_DESC
+            enableVibration(true)
+            setSound(null, null)
+        }
+        notificationManager.createNotificationChannel(sunnahChannel)
     }
 
     /**
@@ -121,6 +137,33 @@ class NotificationHelper(private val context: Context) {
             .build()
 
         notificationManager.notify(notificationId, notification)
+    }
+
+    /**
+     * Notifikasi pengingat puasa sunnah (v2.7) — dikirim pukul 20:00
+     * pada malam sebelum tanggal puasa sunnah.
+     */
+    fun showSunnahNotification(title: String, text: String) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            4001,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, SUNNAH_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(4001, notification)
     }
 
     fun cancelNotification(notificationId: Int) {

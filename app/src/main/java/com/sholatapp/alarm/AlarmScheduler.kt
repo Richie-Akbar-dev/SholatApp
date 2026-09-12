@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.sholatapp.calculation.SunnahDayCalculator
 import com.sholatapp.model.PrayerInfo
 import com.sholatapp.model.PrayerSchedule
 import java.util.Calendar
@@ -161,6 +162,72 @@ class AlarmScheduler(private val context: Context) {
         pendingIntent?.let { alarmManager.cancel(it) }
     }
 
+    /**
+     * Jadwalkan pengingat puasa sunnah (v2.7): alarm pukul 20:00 pada malam
+     * sebelum tanggal puasa sunnah berikutnya (Senin/Kamis/Ayyamul Bidh).
+     * [baseAfter] = titik mulai pindai (receiver mengirim target yang baru
+     * diberitahu agar rantai tidak mengulang hari yang sama).
+     * Bila momen alarm terdekat sudah lewat, otomatis lanjut ke kejadian berikutnya.
+     */
+    fun scheduleSunnahReminder(baseAfter: Calendar = Calendar.getInstance()) {
+        cancelSunnahReminder()
+        if (!prefs.getBoolean("sunnah_reminder_enabled", true)) return
+
+        var base = baseAfter.clone() as Calendar
+        for (attempt in 1..45) {
+            val target = SunnahDayCalculator.nextSunnahAfter(base) ?: return
+            val alarmCal = (target.clone() as Calendar).apply {
+                add(Calendar.DAY_OF_MONTH, -1)
+                set(Calendar.HOUR_OF_DAY, 20)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            if (alarmCal.timeInMillis > System.currentTimeMillis()) {
+                val isBidh = SunnahDayCalculator.isAyyamulBidh(
+                    target.get(Calendar.YEAR),
+                    target.get(Calendar.MONTH),
+                    target.get(Calendar.DAY_OF_MONTH)
+                )
+                val label = if (isBidh) "Puasa Ayyamul Bidh"
+                else "Puasa Sunnah " + SunnahDayCalculator.weekdayFull(
+                    target.get(Calendar.YEAR),
+                    target.get(Calendar.MONTH),
+                    target.get(Calendar.DAY_OF_MONTH)
+                )
+                val intent = Intent(context, SunnahReminderReceiver::class.java).apply {
+                    putExtra(SunnahReminderReceiver.EXTRA_SUNNAH_LABEL, label)
+                    putExtra(SunnahReminderReceiver.EXTRA_SUNNAH_TARGET_MILLIS, target.timeInMillis)
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    REQUEST_CODE_SUNNAH,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    alarmCal.timeInMillis,
+                    pendingIntent
+                )
+                return
+            }
+            base = target
+        }
+    }
+
+    /** Batalkan alarm pengingat puasa sunnah. */
+    fun cancelSunnahReminder() {
+        val intent = Intent(context, SunnahReminderReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_SUNNAH,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        pendingIntent?.let { alarmManager.cancel(it) }
+    }
+
     fun rescheduleAlarms(schedule: PrayerSchedule) {
         schedulePrayerAlarms(schedule)
     }
@@ -190,5 +257,6 @@ class AlarmScheduler(private val context: Context) {
         const val EXTRA_PRAYER_TIME = "prayer_time"
         const val EXTRA_LOCATION = "location"
         const val EXTRA_IS_PREP = "is_prep_alarm"
+        private const val REQUEST_CODE_SUNNAH = 3001
     }
 }

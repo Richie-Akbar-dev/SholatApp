@@ -34,6 +34,11 @@ class BootReceiver : BroadcastReceiver() {
                 )
                 scheduler.schedulePrayerAlarms(schedule)
             }
+
+            // Pengingat puasa sunnah juga disetel ulang setelah reboot (v2.7)
+            if (prefs.getBoolean("sunnah_reminder_enabled", true)) {
+                AlarmScheduler(context).scheduleSunnahReminder()
+            }
         }
     }
 }

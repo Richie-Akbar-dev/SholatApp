@@ -33,6 +33,8 @@ data class UiState(
     val isDownloadingAzan: Boolean = false,
     val checkedPrayers: Set<String> = emptySet(),
     val currentTimeStr: String = "",
+    val currentTotalSeconds: Int = 0,
+    val isSunnahReminderEnabled: Boolean = false,
     val isDndEnabled: Boolean = false
 )
 
@@ -56,7 +58,20 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
         val alarmEnabled = prefs.getBoolean("alarm_enabled", true)
         val prepAlarmEnabled = prefs.getBoolean("prep_alarm_enabled", true)
         val dndEnabled = prefs.getBoolean("dnd_enabled", false)
-        _uiState.update { it.copy(isAlarmEnabled = alarmEnabled, isPrepAlarmEnabled = prepAlarmEnabled, isDndEnabled = dndEnabled) }
+        val sunnahReminderEnabled = prefs.getBoolean("sunnah_reminder_enabled", true)
+        _uiState.update {
+            it.copy(
+                isAlarmEnabled = alarmEnabled,
+                isPrepAlarmEnabled = prepAlarmEnabled,
+                isDndEnabled = dndEnabled,
+                isSunnahReminderEnabled = sunnahReminderEnabled
+            )
+        }
+
+        // Setel ulang rantai pengingat puasa sunnah saat app dibuka (v2.7)
+        if (sunnahReminderEnabled) {
+            alarmScheduler.scheduleSunnahReminder()
+        }
 
         // Load today's checked prayers
         loadCheckedPrayers()
@@ -193,6 +208,8 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
                 val schedule = _uiState.value.prayerSchedule
                 val cal = Calendar.getInstance()
                 val timeStr = String.format("%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+                val totalSecs = cal.get(Calendar.HOUR_OF_DAY) * 3600 +
+                    cal.get(Calendar.MINUTE) * 60 + cal.get(Calendar.SECOND)
                 val seconds = if (schedule != null) {
                     schedule.getSecondsToNextPrayer(
                         cal.get(Calendar.HOUR_OF_DAY),
@@ -200,7 +217,13 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
                         cal.get(Calendar.SECOND)
                     )
                 } else 0
-                _uiState.update { it.copy(currentTimeStr = timeStr, countdownSeconds = seconds) }
+                _uiState.update {
+                    it.copy(
+                        currentTimeStr = timeStr,
+                        countdownSeconds = seconds,
+                        currentTotalSeconds = totalSecs
+                    )
+                }
                 delay(1000)
             }
         }
@@ -245,6 +268,21 @@ class PrayerViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleDnd(enabled: Boolean) {
         _uiState.update { it.copy(isDndEnabled = enabled) }
         prefs.edit().putBoolean("dnd_enabled", enabled).apply()
+    }
+
+    /**
+     * Toggle pengingat notifikasi puasa sunnah (v2.7).
+     * Aktif  -> jadwalkan alarm malam sebelum tanggal sunnah berikutnya.
+     * Matikan -> batalkan alarm berjalan.
+     */
+    fun toggleSunnahReminder(enabled: Boolean) {
+        _uiState.update { it.copy(isSunnahReminderEnabled = enabled) }
+        prefs.edit().putBoolean("sunnah_reminder_enabled", enabled).apply()
+        if (enabled) {
+            alarmScheduler.scheduleSunnahReminder()
+        } else {
+            alarmScheduler.cancelSunnahReminder()
+        }
     }
 
     /**

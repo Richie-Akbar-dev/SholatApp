@@ -26,7 +26,8 @@ import com.sholatapp.viewmodel.UiState
 @Composable
 fun PusatNotifikasiScreen(
     uiState: UiState,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onToggleSunnahReminder: (Boolean) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -133,6 +134,44 @@ fun PusatNotifikasiScreen(
                             color = DarkColors.TextSecondary
                         )
                     }
+                }
+            }
+
+            // Toggle pengingat puasa sunnah (v2.7)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = DarkColors.Surface),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.EventRepeat,
+                        contentDescription = null,
+                        tint = DarkColors.Gold,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Pengingat Puasa Sunnah",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = DarkColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Notifikasi pukul 20:00 pada malam sebelum Senin, Kamis, dan Ayyamul Bidh",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = DarkColors.TextSecondary
+                        )
+                    }
+                    Switch(
+                        checked = uiState.isSunnahReminderEnabled,
+                        onCheckedChange = onToggleSunnahReminder
+                    )
                 }
             }
 
