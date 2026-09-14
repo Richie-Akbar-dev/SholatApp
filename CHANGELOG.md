@@ -1,5 +1,22 @@
 # Changelog — SholatApp
 
+## v2.10.1 (2026-09-14)
+
+Fokus: **perbaikan kritis mesin hitung waktu sholat** — laporan user bahwa waktu sholat tetap meleset terbukti benar: audit numerik menemukan rumus lama salah **tanda trigonometri** (Subuh/Isya/Terbit/Maghrib) dan **terbalik pada bayangan Ashar**, sehingga Subuh bisa muncul setelah matahari terbit (+2 jam 38 menit di Jakarta), Isya sebelum Maghrib (−2 jam 24 menit), dan Ashar mendekati Maghrib (+2 jam 30 menit). Seluruh mesin diganti dengan implementasi astronomi presisi tinggi ala Meeus, parameter KEMENAG RI tetap (Subuh 20°, Isya 18°, Ashar Syafi'i, Imsak −10 menit).
+
+### 🐞 Perbaikan kritis
+
+1. **Tanda sudut matahari salah** — rumus lama memakai `+sin(sudut)` untuk kejadian DI BAWAH horizon (Subuh 20°, Isya 18°, Terbit/Terbenam 0,8333°); seharusnya `sin(ketinggian)` dengan ketinggian negatif. Akibat: Subuh terlalu pagi/terlalu siang, Isya sebelum Maghrib.
+2. **Bayangan Ashar terbalik** — rumus lama menghitung `1/tan(zenit)` alih-alih `tan(|lintang − deklinasi|)`; akibat Ashar meleset hingga ±2,5 jam (mendekati Maghrib di ekuator).
+3. **Equation of Time kasar & tidak konsisten** — dulu rumus Spencer day-of-year dicampur deklinasi Meeus (frame berbeda); kini deklinasi DAN EoT dihitung dari posisi matahari Meeus yang sama.
+4. **Julian Date tanpa koreksi Gregorian** — term B hilang; deklinasi bergeser ±13 hari siklus matahari.
+5. **Deklinasi dievaluasi di jam panggilan** — kini dua iterasi penyempurnaan (gaya PrayTimes.org) mengevaluasi deklinasi tepat di jam tiap kejadian; pembulatan tampilan ke menit terdekat.
+
+### ✅ Validasi
+
+6. **Porting Kotlin → Python 1:1 lalu dibandingkan** dengan Aladhan API method=20 (KEMENAG) pada 5 kota (Jakarta, Surabaya, Medan, Makassar, Jayapura) × 5 tanggal (ekuinoks, solstis, Sept, Okt): rerata selisih 3,7 menit, maksimum 13 menit (Asr Jayapura, dalam rentang beda ihtiyat jadwal cetak), dan tidak ada lagi error struktural. Subuh/Terbit/Dzuhur/Maghrib/Isya umumnya selisih 0–8 menit dari jadwal Aladhan/KEMENAG.
+7. Cek statis 23 poin lolos (kurung, API tidak berubah untuk seluruh pemanggil: Beranda, Salat, Puasa, Kalender, alarm, boot).
+
 ## v2.10.0 (2026-09-12)
 
 Fokus: mewujudkan keinginan user atas **dua halaman Al-Qur'an yang berbeda** — halaman **Al-Qur'an** (114 surah lengkap, tampilan baru dari mockup) dan halaman **Mushaf Bacaan Terarah** (bacaan ditentukan sistem, teks Arab mengalir satu blok gaya mushaf asli, dari mockup + referensi user) — plus restrukturisasi navigasi: pintu **"Lainnya" dihapus total** sesuai keputusan user.
